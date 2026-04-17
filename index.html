@@ -522,7 +522,10 @@ function renderSheet(){
       return`<div class="entry-row">
   <div class="row-num">
     <span>Task ${ri+1}</span>
-    <span class="row-hrs">${rh>0?rh+' hrs':''}</span>
+    <div style="display:flex;align-items:center;gap:8px">
+      <span class="row-hrs">${rh>0?rh+' hrs':''}</span>
+      ${day.rows.length>1?`<button onclick="deleteTask(${day.id},${r.id})" style="background:none;border:none;color:var(--mid);font-size:18px;cursor:pointer;padding:0;line-height:1;" title="Remove task">×</button>`:''}
+    </div>
   </div>
   <div class="entry-grid">
     <div>
@@ -611,6 +614,13 @@ function addDay(){
   S.days.push(newDay());
   renderSheet(); save();
   setTimeout(()=>{const m=document.getElementById('main');m.scrollTop=m.scrollHeight;},80);
+}
+
+function deleteTask(dayId,rowId){
+  const d=S.days.find(d=>d.id===dayId);
+  if(!d||d.rows.length<=1)return;
+  d.rows=d.rows.filter(r=>r.id!==rowId);
+  renderSheet();save();
 }
 
 function addTask(dayId){
@@ -741,33 +751,44 @@ function sendToTina(){
     day.rows.forEach(r=>{
       const h=calcH(r.start,r.finish);
       if(h>0||r.proj||r.code){
-        allRows.push([day.date,emp,r.proj,r.code,h||'',''].join('\t'));
+        allRows.push([day.date,emp,r.proj,r.code,h||'','']);
       }
     });
     if(day.breakDur){
-      const bLabel=day.breakDur==='0.5'?'30 min break':'1 hour break';
-      allRows.push([day.date,emp,'—','BREAK','-'+day.breakDur,day.breakNote||'Lunch'].join('\t'));
+      allRows.push([day.date,emp,'—','BREAK','-'+day.breakDur,day.breakNote||'Lunch']);
     }
   });
   if(!allRows.length){showToast('No entries to send');return;}
   const total=grandTotal();
-  const header='Date\tName\tProject\tLabour Code\tHours\tNotes';
-  const body=[
-    `ROCOCO CONSTRUCTION — Timesheet`,
-    `Employee: ${emp}`,
-    `Month: ${month}`,
-    ``,
-    header,
-    ...allRows,
-    ``,
-    `TOTAL HOURS (excl. breaks): ${total}`
-  ].join('\n');
 
+  // 1. Export Excel automatically
+  const headers=['Date','Name','Project','Labour Code','Hours','Notes'];
+  const data=[['ROCOCO CONSTRUCTION'],['Employee:',emp],['Month:',month],[],headers,...allRows,[],['','','','TOTAL HOURS:',total]];
+  const ws=XLSX.utils.aoa_to_sheet(data);
+  ws['!cols']=[{wch:12},{wch:20},{wch:26},{wch:14},{wch:10},{wch:20}];
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Timesheet');
+  const fname=`RCS_${emp.replace(/\s+/g,'_')}_${month||'timesheet'}.xlsx`;
+  XLSX.writeFile(wb,fname);
+
+  // 2. Open email with instructions to attach the downloaded file
   const emails='admin@rococoltd.com,kayle@rococoltd.com,darren@rococoltd.com';
   const subject=encodeURIComponent(`RCS Timesheet — ${emp} — ${month}`);
-  const bodyEnc=encodeURIComponent(body);
-  window.location.href=`mailto:${emails}?subject=${subject}&body=${bodyEnc}`;
-  showToast('Opening email app...');
+  const body=encodeURIComponent(
+`Hi Tina,
+
+Please find my timesheet attached.
+
+Employee: ${emp}
+Month: ${month}
+Total Hours: ${total}
+
+— ${emp}`);
+  setTimeout(()=>{
+    window.location.href=`mailto:${emails}?subject=${subject}&body=${body}`;
+  },800);
+
+  showToast('Excel saved — attach it to the email!');
 }
 
 function exportExcel(){

@@ -429,8 +429,10 @@ const SK='rcs_v4';
 
 // Build 15-min time slots 5:00am – 10:00pm
 const TIME_SLOTS=[];
-for(let h=5;h<=22;h++){
+for(let h=5;h<=20;h++){
   for(let m=0;m<60;m+=15){
+    if(h===5&&m<30)continue; // start at 5:30am
+    if(h===20&&m>0)continue; // end at 8:00pm
     const hh=String(h).padStart(2,'0');
     const mm=String(m).padStart(2,'0');
     const val=`${hh}:${mm}`;
@@ -441,8 +443,17 @@ for(let h=5;h<=22;h++){
   }
 }
 
-function timeOpts(selected){
-  return`<option value="">--</option>`+TIME_SLOTS.map(t=>`<option value="${t.val}"${t.val===selected?' selected':''}>${t.label}</option>`).join('');
+function timeOpts(selected, minTime=''){
+  return`<option value="">--</option>`+TIME_SLOTS
+    .filter(t=>!minTime||t.val>=minTime)
+    .map(t=>`<option value="${t.val}"${t.val===selected?' selected':''}>${t.label}</option>`).join('');
+}
+
+// get the finish time of the previous row in a day (to use as min start for next)
+function prevFinish(day, rowId){
+  const idx=day.rows.findIndex(r=>r.id===rowId);
+  if(idx<=0)return'';
+  return day.rows[idx-1].finish||'';
 }
 
 function projOpts(selected){
@@ -506,6 +517,8 @@ function renderSheet(){
     const dt=dayTotal(day);
     const rowsHTML=day.rows.map((r,ri)=>{
       const rh=calcH(r.start,r.finish);
+      const minStart=ri===0?'':day.rows[ri-1].finish||'';
+      const minFinish=r.start||minStart||'';
       return`<div class="entry-row">
   <div class="row-num">
     <span>Task ${ri+1}</span>
@@ -515,13 +528,13 @@ function renderSheet(){
     <div>
       <div class="elabel">Start</div>
       <select class="einput sel" onchange="updRow(${day.id},${r.id},'start',this.value)">
-        ${timeOpts(r.start)}
+        ${timeOpts(r.start, minStart)}
       </select>
     </div>
     <div>
       <div class="elabel">Finish</div>
       <select class="einput sel" onchange="updRow(${day.id},${r.id},'finish',this.value)">
-        ${timeOpts(r.finish)}
+        ${timeOpts(r.finish, minFinish)}
       </select>
     </div>
   </div>
@@ -532,7 +545,7 @@ function renderSheet(){
     </select>
     <input type="text" class="einput" id="pt_${day.id}_${r.id}" placeholder="Type project name..."
       oninput="updRow(${day.id},${r.id},'proj',this.value)"
-      style="margin-top:6px;display:${r.proj===''&&false?'block':'none'}"/>
+      style="margin-top:6px;display:none"/>
   </div>
   <div class="entry-full">
     <div class="elabel">Labour code</div>
@@ -631,21 +644,28 @@ function updRow(dayId,rowId,field,val){
   const r=d.rows.find(r=>r.id===rowId);
   if(!r)return;
   r[field]=val;
+
+  if(field==='finish'){
+    // auto-set next row's start to this finish time
+    const idx=d.rows.findIndex(r=>r.id===rowId);
+    if(idx>=0&&idx<d.rows.length-1){
+      const nextRow=d.rows[idx+1];
+      if(!nextRow.start||nextRow.start<val){
+        nextRow.start=val;
+        // clear finish of next row if it's now invalid
+        if(nextRow.finish&&nextRow.finish<=val)nextRow.finish='';
+      }
+    }
+  }
+
   if(field==='start'||field==='finish'){
-    // update row hours label
-    const rh=calcH(r.start,r.finish);
-    // find and update display - re-render row hours inline
     const dt=dayTotal(d);
     const dhEl=document.getElementById('dh_'+dayId);
     if(dhEl)dhEl.textContent=dt>0?dt+' hrs':'0 hrs';
     document.getElementById('grand-total').textContent=grandTotal();
-    // update row hrs badge inline
-    const rowEls=document.querySelectorAll(`#day_${dayId} .entry-row`);
-    const idx=d.rows.findIndex(x=>x.id===rowId);
-    if(rowEls[idx]){
-      const badge=rowEls[idx].querySelector('.row-hrs');
-      if(badge)badge.textContent=rh>0?rh+' hrs':'';
-    }
+    // re-render the whole day to update all time constraints
+    renderSheet();
+    return;
   }
   save();
 }

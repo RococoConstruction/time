@@ -407,6 +407,15 @@ body {
   </button>
 </nav>
  
+<div class="modal-overlay" id="validation-modal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title" style="color:var(--red)">⚠️ Fix these before sending</div>
+    <div id="validation-list" style="margin-bottom:16px;max-height:300px;overflow-y:auto;"></div>
+    <button class="modal-btn primary" style="background:var(--red);border:none;" onclick="closeValidationModal()">Go back and fix</button>
+  </div>
+</div>
+ 
 <div class="modal-overlay" id="emp-modal">
   <div class="modal-sheet">
     <div class="modal-handle"></div>
@@ -731,6 +740,21 @@ function removeProject(p){
 }
  
 // ── EMPLOYEE MODAL ────────────────────────────────────
+function showValidationErrors(errors){
+  const list=document.getElementById('validation-list');
+  list.innerHTML=errors.map(e=>
+    `<div style="display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--navy3);">
+      <span style="color:var(--red);font-size:18px;flex-shrink:0;">×</span>
+      <span style="font-size:14px;color:var(--white);">${e}</span>
+    </div>`
+  ).join('');
+  document.getElementById('validation-modal').classList.add('open');
+}
+ 
+function closeValidationModal(){
+  document.getElementById('validation-modal').classList.remove('open');
+}
+ 
 function openEmpModal(){document.getElementById('modal-emp').value=S.emp;document.getElementById('emp-modal').classList.add('open');setTimeout(()=>document.getElementById('modal-emp').focus(),100);}
 function closeEmpModal(){document.getElementById('emp-modal').classList.remove('open');}
 function saveEmp(){
@@ -742,11 +766,42 @@ function saveEmp(){
 }
  
 // ── EXPORT ────────────────────────────────────────────
-const SHEET_URL='https://script.google.com/macros/s/AKfycbyvfCZrZdeA5HLWUH7k_Tk-EKXQGaX0niocBqIzxhPdw4PHYOQFKWQZ5DCRfgCd3iN4/exec';
+const SHEET_URL='https://script.google.com/macros/s/AKfycbyfRMsu1oP-BTYMPi3lU75HWqnMUhowqrG92hQYpNMrQEvNf0toxEKBoOFL-bcwMeJo/exec';
  
 function sendToTina(){
   const emp=S.emp||'';
   if(!emp){showToast('Please set your name first!');openEmpModal();return;}
+ 
+  // ── VALIDATION ────────────────────────────────────
+  const errors=[];
+ 
+  // Check for duplicate dates
+  const dates=S.days.map(d=>d.date).filter(Boolean);
+  const dupDates=dates.filter((d,i)=>dates.indexOf(d)!==i);
+  if(dupDates.length>0){
+    errors.push('Duplicate date found: '+[...new Set(dupDates)].join(', ')+'. Each day should only appear once.');
+  }
+ 
+  // Check each day's rows
+  S.days.forEach((day,di)=>{
+    day.rows.forEach((r,ri)=>{
+      const hasAnyData=r.start||r.finish||r.proj||r.code||r.act;
+      if(!hasAnyData)return; // skip completely empty rows
+ 
+      const taskLabel='Day '+(di+1)+' Task '+(ri+1)+': ';
+      if(!r.start) errors.push(taskLabel+'Missing start time.');
+      if(!r.finish) errors.push(taskLabel+'Missing finish time.');
+      if(!r.proj) errors.push(taskLabel+'Missing project.');
+      if(!r.code) errors.push(taskLabel+'Missing labour code.');
+      if(r.start&&r.finish&&calcH(r.start,r.finish)<=0) errors.push(taskLabel+'Finish time must be after start time.');
+    });
+  });
+ 
+  if(errors.length>0){
+    // Show validation modal
+    showValidationErrors(errors);
+    return;
+  }
  
   const month=document.getElementById('sheet-month').value||'';
   const allRows=[];

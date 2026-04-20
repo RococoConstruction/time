@@ -380,6 +380,16 @@ body {
           <button onclick="addProject()">Add</button>
         </div>
       </div>
+      <div class="setup-block">
+        <div class="setup-title">Custom Labour Codes</div>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:10px;">Add codes not in the master list. These appear in the dropdown alongside the standard RCS codes.</p>
+        <div id="custom-codes-list"></div>
+        <div style="display:grid;grid-template-columns:90px 1fr auto;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid var(--navy3);">
+          <input type="text" id="new-code-num" class="add-inline-input" placeholder="Code #" style="background:var(--navy3);border:1px solid var(--steel);border-radius:var(--r);padding:10px 12px;font-size:14px;color:var(--white);font-family:inherit;outline:none;-webkit-appearance:none;"/>
+          <input type="text" id="new-code-name" class="add-inline-input" placeholder="Description" style="background:var(--navy3);border:1px solid var(--steel);border-radius:var(--r);padding:10px 12px;font-size:14px;color:var(--white);font-family:inherit;outline:none;-webkit-appearance:none;"/>
+          <button onclick="addCustomCode()" style="padding:10px 14px;background:var(--orange);border:none;border-radius:var(--r);font-size:14px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit;white-space:nowrap;">Add</button>
+        </div>
+      </div>
       <p class="info-note">
         Data saves automatically in your browser.<br/>
         Export to Excel regularly as your backup.<br/><br/>
@@ -468,12 +478,30 @@ function projOpts(selected){
   return`<option value="">Select project...</option>`+S.projects.map(p=>`<option value="${p}"${p===selected?' selected':''}>${p}</option>`).join('')+`<option value="__other__">Other (type below)...</option>`;
 }
 
+function getAllCodes(){
+  const custom=(S.customCodes||[]).map(c=>({num:c.num,name:c.name}));
+  return [...CODES,...custom];
+}
+
+function getCodeMap(){
+  const map={};
+  getAllCodes().forEach(c=>map[c.num]=c.name);
+  return map;
+}
+
 function codeOpts(selected){
-  return`<option value="">Select code...</option>`+CODES.map(c=>`<option value="${c.num}"${c.num===selected?' selected':''}>${c.num} — ${c.name}</option>`).join('');
+  const custom=S.customCodes||[];
+  let opts=`<option value="">Select code...</option>`;
+  opts+=CODES.map(c=>`<option value="${c.num}"${c.num===selected?' selected':''}>${c.num} — ${c.name}</option>`).join('');
+  if(custom.length>0){
+    opts+=`<option disabled>── Custom codes ──</option>`;
+    opts+=custom.map(c=>`<option value="${c.num}"${c.num===selected?' selected':''}>${c.num} — ${c.name}</option>`).join('');
+  }
+  return opts;
 }
 
 // ── STATE ─────────────────────────────────────────────
-let S={emp:'',month:'',projects:['Jorgenson','Mathewson','Beaver','Coop C Store','Fonagy','Hare','Kipling Ball Washrooms','Moosomin Day Care','RM Brock','RM Maryfield','White Garage','Sloan','Slykhuis Brody','Supreme','West'],days:[]};
+let S={emp:'',month:'',projects:['Jorgenson','Mathewson','Beaver','Coop C Store','Fonagy','Hare','Kipling Ball Washrooms','Moosomin Day Care','RM Brock','RM Maryfield','White Garage','Sloan','Slykhuis Brody','Supreme','West','Wiens','Dobson'],customCodes:[],days:[]};
 let idc=1;
 
 function today(){return new Date().toISOString().split('T')[0];}
@@ -696,6 +724,18 @@ function handleProj(dayId,rowId,sel){
   } else {
     if(txt)txt.style.display='none';
     updRow(dayId,rowId,'proj',sel.value);
+    // Auto-populate next task with same project if it's empty
+    if(sel.value){
+      const d=S.days.find(d=>d.id===dayId);
+      if(d){
+        const idx=d.rows.findIndex(r=>r.id===rowId);
+        if(idx>=0&&idx<d.rows.length-1&&!d.rows[idx+1].proj){
+          d.rows[idx+1].proj=sel.value;
+          save();
+          renderSheet();
+        }
+      }
+    }
   }
 }
 
@@ -724,6 +764,28 @@ function renderSetup(){
   document.getElementById('proj-list').innerHTML=S.projects.length
     ?S.projects.map(p=>`<div class="setup-row">${p}<button class="rm-btn" onclick="removeProject('${p.replace(/'/g,"\\'")}')">×</button></div>`).join('')
     :'<div style="font-size:13px;color:var(--muted);padding:6px 0">No projects yet.</div>';
+
+  const custom=S.customCodes||[];
+  document.getElementById('custom-codes-list').innerHTML=custom.length
+    ?custom.map(c=>`<div class="setup-row"><span><strong style="color:var(--org2)">${c.num}</strong> — ${c.name}</span><button class="rm-btn" onclick="removeCustomCode('${c.num}')">×</button></div>`).join('')
+    :'<div style="font-size:13px;color:var(--muted);padding:6px 0">No custom codes added yet.</div>';
+}
+
+function addCustomCode(){
+  const num=document.getElementById('new-code-num').value.trim();
+  const name=document.getElementById('new-code-name').value.trim();
+  if(!num||!name){showToast('Enter both a code number and name');return;}
+  if(!S.customCodes)S.customCodes=[];
+  if(S.customCodes.find(c=>c.num===num)||CODES.find(c=>c.num===num)){showToast('Code '+num+' already exists');return;}
+  S.customCodes.push({num,name});
+  document.getElementById('new-code-num').value='';
+  document.getElementById('new-code-name').value='';
+  save();renderSetup();renderSheet();showToast('Code '+num+' — '+name+' added');
+}
+
+function removeCustomCode(num){
+  S.customCodes=(S.customCodes||[]).filter(c=>c.num!==num);
+  save();renderSetup();renderSheet();
 }
 
 function addProject(){
@@ -814,7 +876,7 @@ function sendToTina(){
           date:day.date,
           proj:r.proj,
           code:r.code,
-          codeName:CODE_MAP[r.code]||'',
+          codeName:getCodeMap()[r.code]||'',
           act:r.act,
           start:r.start,
           finish:r.finish,

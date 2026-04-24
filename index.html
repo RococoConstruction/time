@@ -8,6 +8,8 @@
 <meta name="apple-mobile-web-app-title" content="RCS Time"/>
 <meta name="theme-color" content="#0f1923"/>
 <title>RCS Time</title>
+<link rel="manifest" href="manifest.json"/>
+<meta name="mobile-web-app-capable" content="yes"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@500&display=swap');
@@ -440,7 +442,7 @@ body {
 
 <script>
 // ── CONSTANTS ────────────────────────────────────────────
-const CODES=[{num:'1000',name:'Construction Labour Costs'},{num:'1011',name:'Site Inspection'},{num:'2050',name:'Demolition'},{num:'2100',name:'Septic Tank Install'},{num:'2171',name:'Damp-proofing Labour'},{num:'2201',name:'Earthwork Labour'},{num:'2351',name:'Piles/Caissons Labour'},{num:'2480',name:'Landscaping'},{num:'2500',name:'Paving (incld. Bumpers)'},{num:'3101',name:'Formwork/Grade Beam Labour'},{num:'3102',name:'Concrete Slab Prep'},{num:'3106',name:'ICF Labour'},{num:'3305',name:'Exterior Concrete - Labour'},{num:'3351',name:'Concrete Pour/Fin. Labour'},{num:'4001',name:'Masonry Labour'},{num:'5501',name:'Misc. Metals Labour'},{num:'5601',name:'Structural Steel Labour'},{num:'6103',name:'Wood Foundation Labour'},{num:'6115',name:'Framing Labour'},{num:'6201',name:'Fin. Carpentry - Labour'},{num:'6216',name:'Faux Beam Install'},{num:'7201',name:'Insulation/VP Labour'},{num:'7251',name:'Fireproofing Labour'},{num:'7301',name:'Roofing Labour'},{num:'7401',name:'Siding Labour'},{num:'7406',name:'Soffit/Fascia Labour'},{num:'8101',name:'Metal Door/Frames Install'},{num:'8301',name:'Overhead Door Install'},{num:'8500',name:'Screen Room Labour'},{num:'8601',name:'Windows/Exterior Doors Install'},{num:'8701',name:'Door Hardware Install'},{num:'9201',name:'Parging / Stucco Labour'},{num:'9251',name:'Drywall/Boarding Labour'},{num:'9252',name:'Drywall Tape/Sand'},{num:'9301',name:'Tile Install Labour'},{num:'9501',name:'Ceiling Tile Labour'},{num:'9681',name:'Flooring Install Labour'},{num:'9801',name:'Alt. Wall Finishes Labour'},{num:'9900',name:'Painting'},{num:'10801',name:'Washroom Acc. Labour'},{num:'11401',name:'Food Service Equip. Labour'},{num:'15101',name:'Fireplace Labour'},{num:'17027',name:'Hoarding Labour'},{num:'17070',name:'Final Clean Up'},{num:'18315',name:'Travel Time'},{num:'20100',name:'Accounting'},{num:'20101',name:'Project Management'},{num:'20120',name:'Project Procurement'},{num:'20200',name:'Safety PPE'},{num:'20201',name:'Safety Labour'},{num:'20210',name:'Training'}];
+const CODES=[{num:'1000',name:'Construction Labour Costs'},{num:'1011',name:'Site Inspection'},{num:'2050',name:'Demolition'},{num:'2100',name:'Septic Tank Install'},{num:'2171',name:'Damp-proofing Labour'},{num:'2201',name:'Earthwork Labour'},{num:'2351',name:'Piles/Caissons Labour'},{num:'2480',name:'Landscaping'},{num:'2500',name:'Paving (incld. Bumpers)'},{num:'3101',name:'Formwork/Grade Beam Labour'},{num:'3102',name:'Concrete Slab Prep'},{num:'3106',name:'ICF Labour'},{num:'3305',name:'Exterior Concrete - Labour'},{num:'3351',name:'Concrete Pour/Fin. Labour'},{num:'4001',name:'Masonry Labour'},{num:'5501',name:'Misc. Metals Labour'},{num:'5601',name:'Structural Steel Labour'},{num:'6103',name:'Wood Foundation Labour'},{num:'6115',name:'Framing Labour'},{num:'6201',name:'Fin. Carpentry - Labour'},{num:'6216',name:'Faux Beam Install'},{num:'7201',name:'Insulation/VP Labour'},{num:'7251',name:'Fireproofing Labour'},{num:'7301',name:'Roofing Labour'},{num:'7401',name:'Siding Labour'},{num:'7406',name:'Soffit/Fascia Labour'},{num:'8101',name:'Metal Door/Frames Install'},{num:'8301',name:'Overhead Door Install'},{num:'8500',name:'Screen Room Labour'},{num:'8601',name:'Windows/Exterior Doors Install'},{num:'8701',name:'Door Hardware Install'},{num:'9201',name:'Parging / Stucco Labour'},{num:'9251',name:'Drywall/Boarding Labour'},{num:'9252',name:'Drywall Tape/Sand'},{num:'9301',name:'Tile Install Labour'},{num:'9501',name:'Ceiling Tile Labour'},{num:'9681',name:'Flooring Install Labour'},{num:'9801',name:'Alt. Wall Finishes Labour'},{num:'9900',name:'Painting'},{num:'10801',name:'Washroom Acc. Labour'},{num:'11401',name:'Food Service Equip. Labour'},{num:'15101',name:'Fireplace Labour'},{num:'17027',name:'Hoarding Labour'},{num:'17070',name:'Final Clean Up'},{num:'18315',name:'Travel Time'},{num:'20100',name:'Accounting'},{num:'20101',name:'Project Management'},{num:'20120',name:'Project Procurement'},{num:'20200',name:'Safety PPE'},{num:'20201',name:'Safety Labour'},{num:'20210',name:'Training'},{num:'MKTG',name:'Marketing — Office use only'}];
 const CODE_MAP={};CODES.forEach(c=>CODE_MAP[c.num]=c.name);
 const MAX_ROWS=10;
 const SK='rcs_v4';
@@ -492,7 +494,10 @@ function getCodeMap(){
 function codeOpts(selected){
   const custom=S.customCodes||[];
   let opts=`<option value="">Select code...</option>`;
-  opts+=CODES.map(c=>`<option value="${c.num}"${c.num===selected?' selected':''}>${c.num} — ${c.name}</option>`).join('');
+  opts+=CODES.map(c=>{
+    const label=c.num==='MKTG'?c.name:`${c.num} — ${c.name}`;
+    return`<option value="${c.num}"${c.num===selected?' selected':''}>${label}</option>`;
+  }).join('');
   if(custom.length>0){
     opts+=`<option disabled>── Custom codes ──</option>`;
     opts+=custom.map(c=>`<option value="${c.num}"${c.num===selected?' selected':''}>${c.num} — ${c.name}</option>`).join('');
@@ -577,7 +582,7 @@ function renderSheet(){
       </select>
     </div>
   </div>
-  <div class="entry-full">
+  <div class="entry-full" id="proj_${day.id}_${r.id}" style="display:${r.code==='MKTG'?'none':'block'}">
     <div class="elabel">Project</div>
     <select class="einput sel" onchange="handleProj(${day.id},${r.id},this)">
       ${projOpts(r.proj)}
@@ -588,7 +593,7 @@ function renderSheet(){
   </div>
   <div class="entry-full">
     <div class="elabel">Labour code</div>
-    <select class="einput sel" onchange="updRow(${day.id},${r.id},'code',this.value)">
+    <select class="einput sel" onchange="handleCode(${day.id},${r.id},this.value)">
       ${codeOpts(r.code)}
     </select>
   </div>
@@ -714,6 +719,21 @@ function updRow(dayId,rowId,field,val){
     return;
   }
   save();
+}
+
+function handleCode(dayId,rowId,val){
+  updRow(dayId,rowId,'code',val);
+  // Hide project field for Marketing code
+  const projField=document.getElementById('proj_'+dayId+'_'+rowId);
+  if(projField){
+    if(val==='MKTG'){
+      projField.style.display='none';
+      // Clear any project that was set
+      updRow(dayId,rowId,'proj','');
+    } else {
+      projField.style.display='block';
+    }
+  }
 }
 
 function handleProj(dayId,rowId,sel){
@@ -853,7 +873,7 @@ function sendToTina(){
       const taskLabel='Day '+(di+1)+' Task '+(ri+1)+': ';
       if(!r.start) errors.push(taskLabel+'Missing start time.');
       if(!r.finish) errors.push(taskLabel+'Missing finish time.');
-      if(!r.proj) errors.push(taskLabel+'Missing project.');
+      if(!r.proj&&r.code!=='MKTG') errors.push(taskLabel+'Missing project.');
       if(!r.code) errors.push(taskLabel+'Missing labour code.');
       if(r.start&&r.finish&&calcH(r.start,r.finish)<=0) errors.push(taskLabel+'Finish time must be after start time.');
     });
@@ -981,6 +1001,49 @@ function showToast(msg){
 }
 
 // ── INIT ──────────────────────────────────────────────
+// ── Service Worker Registration ───────────────────────
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('./sw.js').then(reg=>{
+    // Check for updates every time app is opened
+    reg.addEventListener('updatefound',()=>{
+      const newWorker=reg.installing;
+      newWorker.addEventListener('statechange',()=>{
+        if(newWorker.state==='installed'&&navigator.serviceWorker.controller){
+          showUpdateBanner();
+        }
+      });
+    });
+  });
+}
+
+function showUpdateBanner(){
+  const banner=document.createElement('div');
+  banner.style.cssText='position:fixed;top:56px;left:0;right:0;background:#e8722a;color:#fff;padding:10px 16px;display:flex;justify-content:space-between;align-items:center;z-index:500;font-family:inherit;font-size:13px;font-weight:600;';
+  banner.innerHTML='<span>App update available!</span><button onclick="location.reload()" style="background:#fff;color:#e8722a;border:none;padding:6px 12px;border-radius:6px;font-weight:700;cursor:pointer;font-family:inherit;">Update now</button>';
+  document.body.appendChild(banner);
+}
+
+// ── Fetch jobs from Google Sheet ──────────────────────
+const JOBS_URL='https://script.google.com/macros/s/AKfycbyeaS9h77HgFSBwTzHKegNQ93t5hWqqlgYdxBNBU2POWU8DondfEe3SC1iRIGLuPA71/exec';
+
+async function syncJobsFromSheet(){
+  if(!JOBS_URL||JOBS_URL==='JOBS_ENDPOINT_PLACEHOLDER')return;
+  try{
+    const res=await fetch(JOBS_URL,{mode:'cors'});
+    const data=await res.json();
+    if(data.jobs&&Array.isArray(data.jobs)&&data.jobs.length>0){
+      // Merge sheet jobs with any local custom jobs
+      const localCustom=S.projects.filter(p=>!data.jobs.includes(p));
+      S.projects=[...data.jobs,...localCustom];
+      save();
+      renderSheet();
+      renderSetup();
+    }
+  }catch(e){
+    // Silently fail — use cached list
+  }
+}
+
 function init(){
   load();
   const now=new Date();
@@ -996,6 +1059,9 @@ function init(){
 
   document.getElementById('emp-modal').addEventListener('click',function(e){if(e.target===this)closeEmpModal();});
   document.getElementById('modal-emp').addEventListener('keydown',e=>{if(e.key==='Enter')saveEmp();});
+
+  // Sync jobs from Google Sheet on load
+  syncJobsFromSheet();
 }
 
 init();

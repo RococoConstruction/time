@@ -426,7 +426,7 @@ function openEmpModal(){document.getElementById('modal-emp').value=S.emp;documen
 function closeEmpModal(){document.getElementById('emp-modal').classList.remove('open');}
 function saveEmp(){const v=document.getElementById('modal-emp').value.trim();if(!v)return;S.emp=v;document.getElementById('emp-pill').textContent=v;save();closeEmpModal();showToast('Name saved');}
 
-const SHEET_URL='https://script.google.com/macros/s/AKfycbwEkedMXCBSrqWNCwhp3KohbvrDh-pK57d9mkF3c9YzkKwTncj6fA3Y7EMBBfXB7jqq/exec';
+const SHEET_URL='https://script.google.com/macros/s/AKfycby3_R-voW0YGmPzMJNnrKD0Lvo4UOgQb2v0TOOlohw_C8jNtsNA9SfLXiv9UUIOepT0Kg/exec';
 
 function sendToTina(){
   const emp=S.emp||'';if(!emp){showToast('Please set your name first!');openEmpModal();return;}

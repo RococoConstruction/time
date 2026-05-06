@@ -403,7 +403,7 @@ let idc=1, _pendingProjCtx=null;
 
 const $=id=>document.getElementById(id);
 function today(){return new Date().toISOString().split('T')[0];}
-function newRow(){return{id:Date.now()+(idc++),proj:'',code:'',act:'',start:'',finish:''};}
+function newRow(){return{id:Date.now()+(idc++),proj:'',code:'',act:'',start:'',finish:'',lunch:false,lunchMins:30};}
 function newDay(date){return{id:Date.now()+(idc++),date:date||today(),rows:[newRow()]};}
 function save(){try{localStorage.setItem(SK,JSON.stringify(S));}catch(e){}}
 function loadLocal(){try{const r=localStorage.getItem(SK);if(r)S={...S,...JSON.parse(r)};}catch(e){}}
@@ -465,6 +465,15 @@ function renderSheet(){
   <div class="entry-full">
     <div class="elabel">Activity description</div>
     <input type="text" class="einput" value="${r.act.replace(/"/g,'&quot;')}" placeholder="e.g. East wall framing" oninput="updRow(${day.id},${r.id},'act',this.value)"/>
+  </div>
+  <div class="entry-full" style="display:flex;align-items:center;gap:10px;padding:6px 0;">
+    <input type="checkbox" id="lunch_${day.id}_${r.id}" ${r.lunch?'checked':''} onchange="updRow(${day.id},${r.id},'lunch',this.checked)" style="width:18px;height:18px;accent-color:var(--orange);flex-shrink:0;cursor:pointer;"/>
+    <label for="lunch_${day.id}_${r.id}" style="font-size:13px;color:var(--muted);cursor:pointer;">Lunch break</label>
+    <select class="einput sel" style="max-width:110px;" onchange="updRow(${day.id},${r.id},'lunchMins',parseInt(this.value))" ${!r.lunch?'disabled':''}>
+      <option value="30" ${(!r.lunchMins||r.lunchMins===30)?'selected':''}>30 min</option>
+      <option value="45" ${r.lunchMins===45?'selected':''}>45 min</option>
+      <option value="60" ${r.lunchMins===60?'selected':''}>60 min</option>
+    </select>
   </div>
 </div>`;
     }).join('');

@@ -516,8 +516,21 @@ function loadLocal() {
     const r = localStorage.getItem(SK);
     if (r) {
       const p = JSON.parse(r);
-      // Migrate old 'rows' key to 'tasks'
-      if (p.days) p.days = p.days.map(d => ({...d, tasks: d.tasks || d.rows || [newTask()]}));
+      if (p.days) p.days = p.days.map(d => {
+        // Migrate old 'rows' key to 'tasks'
+        const tasks = (d.tasks || d.rows || [newTask()]).map(t => ({
+          id: t.id, proj: t.proj||'', code: t.code||'',
+          act: t.act||'', start: t.start||'', finish: t.finish||''
+          // strip old task-level lunch fields
+        }));
+        return {
+          id: d.id,
+          date: d.date || today(),
+          tasks: tasks,
+          lunch: d.lunch || false,
+          lunchMins: d.lunchMins || 30
+        };
+      });
       S = { ...S, ...p };
     }
   } catch(e) {}

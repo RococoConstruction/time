@@ -469,7 +469,41 @@ let syncState    = 'offline';
 let lastSyncTime = null;
 
 const LABOUR_MASTER = [
-  'REG','OT','DT','TRAVEL','PERDIEM','EQUIP','MATERIAL','SUB','OTHER'
+  '1000 - Construction Labour',
+  '1011 - Site Inspection',
+  '2050 - Demolition',
+  '2100 - Septic Tank Install',
+  '2171 - Damp-proofing',
+  '2201 - Earthwork',
+  '2351 - Piles/Caissons',
+  '2480 - Landscaping',
+  '2500 - Paving',
+  '3101 - Formwork/Grade Beam',
+  '3102 - Concrete Slab Prep',
+  '3106 - ICF Labour',
+  '3305 - Exterior Concrete',
+  '3351 - Concrete Pour/Finish',
+  '4001 - Masonry',
+  '5501 - Misc Steel/Structural',
+  '6101 - Framing Labour - Wall',
+  '6102 - Framing Labour - Roof',
+  '6115 - Framing Labour - General',
+  '6200 - Millwork/Stairs',
+  '6300 - Exterior Finish/Siding',
+  '6400 - Roofing Labour',
+  '6500 - Insulation Labour',
+  '6600 - Drywall Labour',
+  '6700 - Interior Finish/Trim',
+  '6800 - Painting Labour',
+  '6900 - Flooring Labour',
+  '7100 - Doors & Windows Install',
+  '7201 - Insulation/VP Labour',
+  '7500 - Cabinet Install',
+  '8100 - Concrete Flatwork',
+  '9000 - General Labour',
+  '9100 - Travel Time',
+  '9200 - Equipment Operation',
+  '9900 - Other'
 ];
 
 // ── UI helpers ───────────────────────────────────────────
@@ -637,7 +671,8 @@ function saveLocal() {
 
 function loadLocalState() {
   days        = JSON.parse(localStorage.getItem('rcs_days')  || '[]');
-  jobs        = JSON.parse(localStorage.getItem('rcs_jobs')  || '[]');
+  const DEFAULT_JOBS = ['Jorgenson','Mathewson','Beaver','Coop C Store','Fonagy','Hare','Kipling Ball Washrooms','Moosomin Day Care','RM Brock','RM Maryfield','White Garage','Sloan','Slykhuis Brody','Supreme','West','Wiens','Dobson','Shauna','Lequer','Carlyle Cubs','Funeral Reno'];
+  jobs = JSON.parse(localStorage.getItem('rcs_jobs') || JSON.stringify(DEFAULT_JOBS));
   labourCodes = JSON.parse(localStorage.getItem('rcs_codes') || '[]');
   renderAll();
   setSyncState('offline');

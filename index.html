@@ -427,6 +427,7 @@ function codeOpts(selected){
   return opts;
 }
 
+function calcHGross(s,f){if(!s||!f)return 0;const[sh,sm]=s.split(':').map(Number);const[fh,fm]=f.split(':').map(Number);const h=Math.round(((fh*60+fm)-(sh*60+sm))/60*100)/100;return h>0?h:0;}
 function calcH(s,f){if(!s||!f)return 0;const[sh,sm]=s.split(':').map(Number);const[fh,fm]=f.split(':').map(Number);const h=Math.round(((fh*60+fm)-(sh*60+sm))/60*100)/100;return h>0?h:0;}
 function dayTotal(day){return Math.round(day.rows.reduce((s,r)=>s+calcH(r.start,r.finish),0)*100)/100;}
 function grandTotal(){return Math.round(S.days.reduce((s,d)=>s+dayTotal(d),0)*100)/100;}
@@ -631,9 +632,34 @@ async function sendToTina(){
   const month=$('sheet-month').value||'';
   const allRows=[];
   const codeMap=getCodeMap();
-  S.days.forEach(day=>{day.rows.forEach(r=>{const h=calcH(r.start,r.finish);if(h>0||r.proj||r.code){allRows.push({date:day.date,proj:r.proj,code:r.code,codeName:codeMap[r.code]||'',act:r.act,start:r.start,finish:r.finish,hours:h||0});}});});
+  S.days.forEach(day=>{day.rows.forEach(r=>{
+    // Send GROSS hours (no lunch deducted) - Apps Script handles break separately
+    const h=calcHGross(r.start,r.finish);
+    if(h>0||r.proj||r.code){allRows.push({date:day.date,proj:r.proj,code:r.code,codeName:codeMap[r.code]||'',act:r.act,start:r.start,finish:r.finish,hours:h||0});}
+  });});
   if(!allRows.length){showToast('No entries to send');return;}
-  const payload={emp,month,total:grandTotal(),rows:allRows};
+  // Calculate break info for Google Sheets
+  // Original app sent one breakDur + breakDate per submission
+  // We aggregate all lunch breaks across all days
+  let breakDur='', breakDate='', breakMins=0;
+  S.days.forEach(day=>{
+    day.rows.forEach(r=>{
+      if(r.lunch && r.lunchMins){
+        breakMins += (r.lunchMins||30);
+        if(!breakDate)breakDate=day.date;
+      }
+    });
+  });
+  if(breakMins>0){
+    // Convert total break minutes to hours string expected by Apps Script
+    const breakH=breakMins/60;
+    breakDur=breakH<=0.5?'0.5':'1';
+  }
+  const payload={emp,month,total:grandTotal(),rows:allRows,
+    breakDur:breakDur||'',
+    breakDate:breakDate||'',
+    breakNote:'Lunch'
+  };
   const btn=$('send-btn');btn.textContent='Sending...';btn.disabled=true;
 
   // Save to Supabase

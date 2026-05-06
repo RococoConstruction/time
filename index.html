@@ -945,8 +945,13 @@ function validate() {
 }
 
 async function sendToTina() {
-  const emp = S.emp || '';
-  if (!emp) { toast('Please set your name first!'); openEmpModal(); return; }
+  // Use real name — if it looks like an email, prompt for name
+  let emp = S.emp || '';
+  if (!emp || emp.includes('@')) {
+    toast('Please set your name in Setup first!');
+    openEmpModal();
+    return;
+  }
 
   const errs = validate();
   if (errs.length) {
@@ -987,9 +992,8 @@ async function sendToTina() {
   });
 
   if (totalBreakMins > 0) {
-    // Apps Script expects '0.5' or '1'
-    const bh = totalBreakMins / 60;
-    breakDur = bh <= 0.5 ? '0.5' : '1';
+    // Send exact break hours as decimal string
+    breakDur = (totalBreakMins / 60).toFixed(2);
   }
 
   if (!allRows.length) { toast('No entries to send'); btn.textContent = 'Send to Tina'; btn.disabled = false; return; }
@@ -1189,7 +1193,8 @@ async function doSignup() {
     const { data, error } = await DB.auth.signUp({ email, password: pass, options: { data: { full_name: name } } });
     if (error) { $('su-btn').disabled = false; return setMsg(error.message, 'err'); }
     if (data.user) {
-      S.emp = name;
+      S.emp = name;  // Always set name from signup form
+      save();
       await DB.from('employees').insert({ auth_uid: data.user.id, name, role: 'employee' }).catch(() => {});
       CU = data.user;
       await loadProfile();
@@ -1212,6 +1217,11 @@ async function loadProfile() {
   try {
     const { data } = await DB.from('employees').select('*').eq('auth_uid', CU.id).single();
     CE = data;
+    // If we have a real name from DB, always use it
+    if (CE?.name && !CE.name.includes('@')) {
+      S.emp = CE.name;
+      save();
+    }
   } catch(e) { CE = null; }
 }
 
@@ -1221,7 +1231,8 @@ function launchApp() {
   $('app').classList.add('on');
 
   // Set name
-  const name = CE?.name || S.emp || CU?.email || '';
+  // Always use the employee's real name, never their email
+  const name = CE?.name || S.emp || '';
   if (name) { S.emp = name; save(); }
   $('emp-pill').textContent = S.emp || 'Tap to set name';
   $('s-name-disp').textContent = S.emp || '—';

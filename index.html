@@ -199,9 +199,9 @@
       </div>
       <div class="card">
         <div class="card-title">Custom Labour Codes</div>
-        <p class="hint" style="margin-bottom:8px">Add codes not in the master list.</p>
+        <p class="hint" style="margin-bottom:8px">Extra codes beyond the master list. Admin-managed — syncs to all employees.</p>
         <div class="chip-list" id="codes-list"></div>
-        <div class="add-row">
+        <div id="add-code-row" class="add-row" style="display:none">
           <input type="text" id="new-code-input" placeholder="e.g. 9950 - Special" maxlength="40">
           <button class="btn btn-primary" onclick="addCode()">Add</button>
         </div>
@@ -280,7 +280,8 @@ const LABOUR_MASTER = [
   '6500 - Insulation Labour','6600 - Drywall Labour','6700 - Interior Finish/Trim',
   '6800 - Painting Labour','6900 - Flooring Labour','7100 - Doors & Windows Install',
   '7201 - Insulation/VP Labour','7500 - Cabinet Install','8100 - Concrete Flatwork',
-  '9000 - General Labour','9100 - Travel Time','9200 - Equipment Operation','9900 - Other'
+  '9000 - General Labour','9100 - Travel Time','9200 - Equipment Operation','9900 - Other',
+  '2130 - Project Pursuit'
 ];
 
 // ── STATE ──
@@ -365,6 +366,7 @@ function showApp(){
   if(currentEmployee?.role==='admin'){
     $('admin-badge').style.display='inline-block';
     $('admin-panel').style.display='block';
+    $('add-code-row').style.display='flex';
     loadAdminData();
   }
   loadLocalState();
@@ -471,7 +473,8 @@ async function loadCloudData(){
       jobs=[...DEFAULT_JOBS];
       await db.from('jobs').upsert(DEFAULT_JOBS.map(j=>({code:j,description:j,active:true})),{onConflict:'code'});
     }
-    const{data:codeRows}=await db.from('labour_codes').select('*').eq('employee_id',currentEmployee.id);
+    // Load shared codes (null employee_id = admin-created, visible to all)
+    const{data:codeRows}=await db.from('labour_codes').select('*').is('employee_id',null);
     if(codeRows)labourCodes=codeRows.map(r=>r.code);
     saveLocal();renderAll();
     lastSyncTime=new Date();setSyncState('synced',lastSyncTime);
@@ -587,12 +590,13 @@ async function addCode(){
   const val=$('new-code-input').value.trim().toUpperCase();
   if(!val||labourCodes.includes(val))return;
   labourCodes.push(val);$('new-code-input').value='';saveLocal();
-  try{await db.from('labour_codes').insert({employee_id:currentEmployee.id,code:val});}catch(e){}
-  renderCodes();
+  // Save as shared code (null employee_id = visible to all)
+  try{await db.from('labour_codes').insert({employee_id:null,code:val,description:val});}catch(e){console.error(e);}
+  renderCodes();toast('Code added — visible to all employees','success');
 }
 async function removeCode(i){
   const code=labourCodes[i];labourCodes.splice(i,1);saveLocal();
-  try{await db.from('labour_codes').delete().eq('employee_id',currentEmployee.id).eq('code',code);}catch(e){}
+  try{await db.from('labour_codes').delete().eq('code',code);}catch(e){}
   renderCodes();
 }
 

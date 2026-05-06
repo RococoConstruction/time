@@ -510,8 +510,42 @@ function updRow(dayId,rowId,field,val){
   const d=S.days.find(d=>d.id===dayId);if(!d)return;
   const r=d.rows.find(r=>r.id===rowId);if(!r)return;
   r[field]=val;
-  if(field==='finish'){const idx=d.rows.findIndex(r=>r.id===rowId);if(idx>=0&&idx<d.rows.length-1){const nextRow=d.rows[idx+1];if(!nextRow.start||nextRow.start<val){nextRow.start=val;if(nextRow.finish&&nextRow.finish<=val)nextRow.finish='';}}}
-  if(field==='start'||field==='finish'){const dt=dayTotal(d);const dhEl=$('dh_'+dayId);if(dhEl)dhEl.textContent=dt>0?dt+' hrs':'0 hrs';$('grand-total').textContent=grandTotal();renderSheet();return;}
+  if(field==='finish'){
+    const idx=d.rows.findIndex(r=>r.id===rowId);
+    if(idx>=0&&idx<d.rows.length-1){
+      const nextRow=d.rows[idx+1];
+      if(!nextRow.start||nextRow.start<val){
+        nextRow.start=val;
+        if(nextRow.finish&&nextRow.finish<=val)nextRow.finish='';
+        // Update next task's start dropdown in DOM without full re-render
+        const nextStartSel=document.querySelector(`select[onchange*="updRow(${dayId},${nextRow.id},'start'"]`);
+        if(nextStartSel){
+          nextStartSel.innerHTML=timeOpts(val,val);
+          nextStartSel.value=val;
+        }
+        const nextFinishSel=document.querySelector(`select[onchange*="updRow(${dayId},${nextRow.id},'finish'"]`);
+        if(nextFinishSel){
+          nextFinishSel.innerHTML=timeOpts(nextRow.finish,val);
+        }
+        save();
+      }
+    }
+  }
+  if(field==='start'||field==='finish'){
+    const dt=dayTotal(d);
+    const dhEl=$('dh_'+dayId);
+    if(dhEl)dhEl.textContent=dt>0?dt+' hrs':'0 hrs';
+    $('grand-total').textContent=grandTotal();
+    // Update row hours badge without full re-render
+    const rh=calcHGross(r.start,r.finish);
+    const rowHrEls=document.querySelectorAll('.row-hrs');
+    const entryRows=document.querySelectorAll('.entry-row');
+    entryRows.forEach(er=>{
+      const sel=er.querySelector(`select[onchange*="${rowId},'start'"], select[onchange*="${rowId},'finish'"]`);
+      if(sel){const badge=er.querySelector('.row-hrs');if(badge)badge.textContent=rh>0?rh+' hrs':'';}
+    });
+    save();return;
+  }
   save();
 }
 

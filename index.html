@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -258,416 +259,413 @@ const DEFAULT_JOBS = [
 ];
 
 const LABOUR_MASTER = [
-  '1000 - Construction Labour','1011 - Site Inspection','2050 - Demolition',
-  '2100 - Septic Tank Install','2171 - Damp-proofing','2201 - Earthwork',
-  '2351 - Piles/Caissons','2480 - Landscaping','2500 - Paving',
-  '3101 - Formwork/Grade Beam','3102 - Concrete Slab Prep','3106 - ICF Labour',
-  '3305 - Exterior Concrete','3351 - Concrete Pour/Finish','4001 - Masonry',
-  '5501 - Misc Steel/Structural','6101 - Framing Labour - Wall',
-  '6102 - Framing Labour - Roof','6115 - Framing Labour - General',
-  '6200 - Millwork/Stairs','6300 - Exterior Finish/Siding','6400 - Roofing Labour',
-  '6500 - Insulation Labour','6600 - Drywall Labour','6700 - Interior Finish/Trim',
-  '6800 - Painting Labour','6900 - Flooring Labour','7100 - Doors & Windows Install',
-  '7201 - Insulation/VP Labour','7500 - Cabinet Install','8100 - Concrete Flatwork',
-  '9000 - General Labour','9100 - Travel Time','9200 - Equipment Operation','9900 - Other'
+‘1000 - Construction Labour’,‘1011 - Site Inspection’,‘2050 - Demolition’,
+‘2100 - Septic Tank Install’,‘2171 - Damp-proofing’,‘2201 - Earthwork’,
+‘2351 - Piles/Caissons’,‘2480 - Landscaping’,‘2500 - Paving’,
+‘3101 - Formwork/Grade Beam’,‘3102 - Concrete Slab Prep’,‘3106 - ICF Labour’,
+‘3305 - Exterior Concrete’,‘3351 - Concrete Pour/Finish’,‘4001 - Masonry’,
+‘5501 - Misc Steel/Structural’,‘6101 - Framing Labour - Wall’,
+‘6102 - Framing Labour - Roof’,‘6115 - Framing Labour - General’,
+‘6200 - Millwork/Stairs’,‘6300 - Exterior Finish/Siding’,‘6400 - Roofing Labour’,
+‘6500 - Insulation Labour’,‘6600 - Drywall Labour’,‘6700 - Interior Finish/Trim’,
+‘6800 - Painting Labour’,‘6900 - Flooring Labour’,‘7100 - Doors & Windows Install’,
+‘7201 - Insulation/VP Labour’,‘7500 - Cabinet Install’,‘8100 - Concrete Flatwork’,
+‘9000 - General Labour’,‘9100 - Travel Time’,‘9200 - Equipment Operation’,‘9900 - Other’
 ];
 
 const { createClient } = supabase;
-const db = createClient(SUPABASE_URL, SUPABASE_ANON);
+const db = createClient(SUPABASE_URL, SUPABASE_ANON, {
+auth: {
+persistSession: true,
+storageKey: ‘rcs-time-auth’,
+storage: window.localStorage,
+autoRefreshToken: true,
+detectSessionInUrl: true
+}
+});
 const $ = id => document.getElementById(id);
 
 let currentUser = null, currentEmployee = null;
-let days = [], jobs = [...DEFAULT_JOBS], labourCodes = [], lastSyncTime = null;
+let days = [], jobs = […DEFAULT_JOBS], labourCodes = [], lastSyncTime = null;
 
 // ── HELPERS ──
-function showSpinner(){$('spinner').classList.remove('hidden');}
-function hideSpinner(){$('spinner').classList.add('hidden');}
-function toast(msg,type=''){
-  const el=$('toast'); el.textContent=msg; el.className='show '+type;
-  clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove('show'),3200);
+function showSpinner(){$(‘spinner’).classList.remove(‘hidden’);}
+function hideSpinner(){$(‘spinner’).classList.add(‘hidden’);}
+function toast(msg,type=’’){
+const el=$(‘toast’); el.textContent=msg; el.className=’show ’+type;
+clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove(‘show’),3200);
 }
 function setSyncState(s,t){
-  $('sync-dot').className='sync-dot '+s;
-  $('sync-label').textContent=s==='synced'?'Saved to cloud':s==='syncing'?'Syncing…':'Offline — saved locally';
-  if(t)$('sync-time').textContent=t.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+$(‘sync-dot’).className=’sync-dot ’+s;
+$(‘sync-label’).textContent=s===‘synced’?‘Saved to cloud’:s===‘syncing’?‘Syncing…’:‘Offline — saved locally’;
+if(t)$(‘sync-time’).textContent=t.toLocaleTimeString([],{hour:‘2-digit’,minute:‘2-digit’});
 }
 
 // ── AUTH ──
 function switchAuthTab(tab){
-  $('login-form').style.display=tab==='login'?'block':'none';
-  $('signup-form').style.display=tab==='signup'?'block':'none';
-  document.querySelectorAll('.auth-tab').forEach((b,i)=>b.classList.toggle('active',i===(tab==='login'?0:1)));
-  $('auth-msg').textContent='';
+$(‘login-form’).style.display=tab===‘login’?‘block’:‘none’;
+$(‘signup-form’).style.display=tab===‘signup’?‘block’:‘none’;
+document.querySelectorAll(’.auth-tab’).forEach((b,i)=>b.classList.toggle(‘active’,i===(tab===‘login’?0:1)));
+$(‘auth-msg’).textContent=’’;
 }
-function setAuthMsg(msg,type=''){const el=$('auth-msg');el.textContent=msg;el.className='auth-msg '+type;}
+function setAuthMsg(msg,type=’’){const el=$(‘auth-msg’);el.textContent=msg;el.className=’auth-msg ’+type;}
 
 async function doLogin(){
-  const email=$('login-email').value.trim(), pass=$('login-password').value;
-  if(!email||!pass)return setAuthMsg('Enter email and password.','error');
-  $('login-btn').disabled=true; setAuthMsg('Signing in…');
-  const{error}=await db.auth.signInWithPassword({email,password:pass});
-  $('login-btn').disabled=false;
-  if(error)setAuthMsg(error.message,'error');
+const email=$(‘login-email’).value.trim(), pass=$(‘login-password’).value;
+if(!email||!pass)return setAuthMsg(‘Enter email and password.’,‘error’);
+$(‘login-btn’).disabled=true; setAuthMsg(‘Signing in…’);
+const{error}=await db.auth.signInWithPassword({email,password:pass});
+$(‘login-btn’).disabled=false;
+if(error)setAuthMsg(error.message,‘error’);
 }
 
 async function doSignup(){
-  const name=$('signup-name').value.trim(), email=$('signup-email').value.trim(), pass=$('signup-password').value;
-  if(!name)return setAuthMsg('Enter your full name.','error');
-  if(!email)return setAuthMsg('Enter your email.','error');
-  if(pass.length<8)return setAuthMsg('Password must be 8+ characters.','error');
-  $('signup-btn').disabled=true; setAuthMsg('Creating account…');
-  const{data,error}=await db.auth.signUp({email,password:pass,options:{data:{full_name:name}}});
-  $('signup-btn').disabled=false;
-  if(error)return setAuthMsg(error.message,'error');
-  if(data.user)await db.from('employees').insert({auth_uid:data.user.id,name,role:'employee'});
-  setAuthMsg('Account created! Check your email to confirm, then sign in.','success');
+const name=$(‘signup-name’).value.trim(), email=$(‘signup-email’).value.trim(), pass=$(‘signup-password’).value;
+if(!name)return setAuthMsg(‘Enter your full name.’,‘error’);
+if(!email)return setAuthMsg(‘Enter your email.’,‘error’);
+if(pass.length<8)return setAuthMsg(‘Password must be 8+ characters.’,‘error’);
+$(‘signup-btn’).disabled=true; setAuthMsg(‘Creating account…’);
+const{data,error}=await db.auth.signUp({email,password:pass,options:{data:{full_name:name}}});
+$(‘signup-btn’).disabled=false;
+if(error)return setAuthMsg(error.message,‘error’);
+if(data.user)await db.from(‘employees’).insert({auth_uid:data.user.id,name,role:‘employee’});
+setAuthMsg(‘Account created! Check your email to confirm, then sign in.’,‘success’);
 }
 
 async function doSignout(){await db.auth.signOut();}
 
 db.auth.onAuthStateChange(async(event,session)=>{
-  if(session?.user){currentUser=session.user;await loadEmployeeProfile();showApp();}
-  else{currentUser=null;currentEmployee=null;showAuthScreen();}
+if(event===‘SIGNED_OUT’){currentUser=null;currentEmployee=null;showAuthScreen();return;}
+if(session?.user&&!currentUser){
+currentUser=session.user;
+await loadEmployeeProfile();
+showApp();
+} else if(!session?.user){
+currentUser=null;currentEmployee=null;showAuthScreen();
+}
 });
 
 async function loadEmployeeProfile(){
-  const{data}=await db.from('employees').select('*').eq('auth_uid',currentUser.id).single();
-  currentEmployee=data;
+const{data}=await db.from(‘employees’).select(’*’).eq(‘auth_uid’,currentUser.id).single();
+currentEmployee=data;
 }
 
 // ── SHOW/HIDE ──
 function showApp(){
-  $('auth-screen').classList.add('hidden');
-  $('app').classList.remove('hidden');
-  const name=currentEmployee?.name||currentUser.email;
-  $('topbar-user-name').textContent=name;
-  $('setup-name-display').textContent=name;
-  $('setup-email-display').textContent=currentUser.email;
-  $('setup-name-input').value=name;
-  if(currentEmployee?.role==='admin'){
-    $('admin-badge').style.display='inline-block';
-    $('admin-panel').style.display='block';
-    loadAdminData();
-  }
-  loadLocalState();
-  loadCloudData();
+$(‘auth-screen’).classList.add(‘hidden’);
+$(‘app’).classList.remove(‘hidden’);
+const name=currentEmployee?.name||currentUser.email;
+$(‘topbar-user-name’).textContent=name;
+$(‘setup-name-display’).textContent=name;
+$(‘setup-email-display’).textContent=currentUser.email;
+$(‘setup-name-input’).value=name;
+if(currentEmployee?.role===‘admin’){
+$(‘admin-badge’).style.display=‘inline-block’;
+$(‘admin-panel’).style.display=‘block’;
+loadAdminData();
 }
-function showAuthScreen(){$('auth-screen').classList.remove('hidden');$('app').classList.add('hidden');}
+loadLocalState();
+loadCloudData();
+}
+function showAuthScreen(){$(‘auth-screen’).classList.remove(‘hidden’);$(‘app’).classList.add(‘hidden’);}
 
 // ── STORAGE ──
 function saveLocal(){
-  localStorage.setItem('rcs_days',JSON.stringify(days));
-  localStorage.setItem('rcs_jobs',JSON.stringify(jobs));
-  localStorage.setItem('rcs_codes',JSON.stringify(labourCodes));
+localStorage.setItem(‘rcs_days’,JSON.stringify(days));
+localStorage.setItem(‘rcs_jobs’,JSON.stringify(jobs));
+localStorage.setItem(‘rcs_codes’,JSON.stringify(labourCodes));
 }
 function loadLocalState(){
-  days=JSON.parse(localStorage.getItem('rcs_days')||'[]');
-  const sj=localStorage.getItem('rcs_jobs');
-  jobs=sj?JSON.parse(sj):[...DEFAULT_JOBS];
-  labourCodes=JSON.parse(localStorage.getItem('rcs_codes')||'[]');
-  renderAll(); setSyncState('offline');
+days=JSON.parse(localStorage.getItem(‘rcs_days’)||’[]’);
+const sj=localStorage.getItem(‘rcs_jobs’);
+jobs=sj?JSON.parse(sj):[…DEFAULT_JOBS];
+labourCodes=JSON.parse(localStorage.getItem(‘rcs_codes’)||’[]’);
+renderAll(); setSyncState(‘offline’);
 }
 
 // ── CLOUD SYNC ──
 async function loadCloudData(){
-  if(!currentEmployee)return;
-  setSyncState('syncing');
-  try{
-    const{data:jobRows}=await db.from('jobs').select('*').eq('active',true).order('code');
-    if(jobRows&&jobRows.length>0){
-      jobs=jobRows.map(r=>r.code);
-    } else {
-      // Seed defaults into cloud on first login
-      jobs=[...DEFAULT_JOBS];
-      await db.from('jobs').upsert(DEFAULT_JOBS.map(j=>({code:j,description:j,active:true})),{onConflict:'code'});
-    }
-    const{data:codeRows}=await db.from('labour_codes').select('*').eq('employee_id',currentEmployee.id);
-    if(codeRows)labourCodes=codeRows.map(r=>r.code);
-    saveLocal(); renderAll();
-    lastSyncTime=new Date(); setSyncState('synced',lastSyncTime);
-  } catch(e){setSyncState('offline');console.error(e);}
+if(!currentEmployee)return;
+setSyncState(‘syncing’);
+try{
+const{data:jobRows}=await db.from(‘jobs’).select(’*’).eq(‘active’,true).order(‘code’);
+if(jobRows&&jobRows.length>0){
+jobs=jobRows.map(r=>r.code);
+} else {
+// Seed defaults into cloud on first login
+jobs=[…DEFAULT_JOBS];
+await db.from(‘jobs’).upsert(DEFAULT_JOBS.map(j=>({code:j,description:j,active:true})),{onConflict:‘code’});
+}
+const{data:codeRows}=await db.from(‘labour_codes’).select(’*’).eq(‘employee_id’,currentEmployee.id);
+if(codeRows)labourCodes=codeRows.map(r=>r.code);
+saveLocal(); renderAll();
+lastSyncTime=new Date(); setSyncState(‘synced’,lastSyncTime);
+} catch(e){setSyncState(‘offline’);console.error(e);}
 }
 
 // ── TABS ──
 function switchTab(name,btn){
-  document.querySelectorAll('.tab-content').forEach(el=>el.classList.remove('active'));
-  document.querySelectorAll('.tab-btn').forEach(el=>el.classList.remove('active'));
-  $('tab-'+name).classList.add('active'); btn.classList.add('active');
+document.querySelectorAll(’.tab-content’).forEach(el=>el.classList.remove(‘active’));
+document.querySelectorAll(’.tab-btn’).forEach(el=>el.classList.remove(‘active’));
+$(‘tab-’+name).classList.add(‘active’); btn.classList.add(‘active’);
 }
 
 // ── DAYS ──
 function renderDays(){
-  const c=$('days-container'); c.innerHTML='';
-  days.forEach((day,i)=>c.appendChild(buildDayCard(day,i)));
-  updateTotalHours();
+const c=$(‘days-container’); c.innerHTML=’’;
+days.forEach((day,i)=>c.appendChild(buildDayCard(day,i)));
+updateTotalHours();
 }
 
 function buildDayCard(day,index){
-  const div=document.createElement('div');
-  div.className='day-entry';
-  const isWriteIn=day.job&&day.job!=='__other__'&&!jobs.includes(day.job);
-  const showWriteIn=isWriteIn||day.job==='__other__';
-  const jobOpts=jobs.map(j=>`<option value="${j}"${day.job===j?' selected':''}>${j}</option>`).join('');
-  div.innerHTML=`
-    <div class="day-header">
-      <span class="day-label">Day ${index+1}</span>
-      <span class="day-hours" id="day-hrs-${index}">0 hrs</span>
-      <button class="day-remove" onclick="removeDay(${index})">×</button>
-    </div>
-    <div class="field-row">
-      <div class="field-group">
-        <label>Date</label>
-        <input type="date" value="${day.date||''}" onchange="updateDay(${index},'date',this.value)">
-      </div>
-      <div class="field-group">
-        <label>Job / Project</label>
-        <select onchange="updateDay(${index},'job',this.value)">
-          <option value="">— Select —</option>
-          ${jobOpts}
-          <option value="__other__"${showWriteIn?' selected':''}>Other / write-in</option>
-        </select>
-      </div>
-    </div>
-    ${showWriteIn?`<div class="field-row"><div class="field-group">
-      <label>Job (write-in)</label>
-      <input type="text" value="${day.jobWriteIn||''}" placeholder="Job name / number"
-        onchange="updateDay(${index},'jobWriteIn',this.value)">
-    </div></div>`:''}
-    <div class="field-row">
-      <div class="field-group">
-        <label>Start</label>
-        <input type="time" value="${day.start||''}" onchange="updateDay(${index},'start',this.value)">
-      </div>
-      <div class="field-group">
-        <label>End</label>
-        <input type="time" value="${day.end||''}" onchange="updateDay(${index},'end',this.value)">
-      </div>
-    </div>
-    <div class="field-row">
-      <div class="field-group">
-        <label>Labour Code</label>
-        <select onchange="updateDay(${index},'code',this.value)">
-          <option value="">— Select —</option>
-          ${LABOUR_MASTER.map(c=>`<option value="${c}"${day.code===c?' selected':''}>${c}</option>`).join('')}
-          ${labourCodes.map(c=>`<option value="${c}"${day.code===c?' selected':''}>${c}</option>`).join('')}
-        </select>
-      </div>
-    </div>
-    <div class="lunch-row">
-      <input type="checkbox" id="lunch-${index}"${day.lunch?' checked':''}
-        onchange="updateDay(${index},'lunch',this.checked)">
-      <label for="lunch-${index}">Lunch break</label>
-      <select onchange="updateDay(${index},'lunchMins',parseInt(this.value))"${!day.lunch?' disabled':''}>
-        <option value="30"${(!day.lunchMins||day.lunchMins===30)?' selected':''}>30 min</option>
-        <option value="45"${day.lunchMins===45?' selected':''}>45 min</option>
-        <option value="60"${day.lunchMins===60?' selected':''}>60 min</option>
-      </select>
-    </div>`;
-  setTimeout(()=>calcDayHours(index),0);
-  return div;
+const div=document.createElement(‘div’);
+div.className=‘day-entry’;
+const isWriteIn=day.job&&day.job!==’**other**’&&!jobs.includes(day.job);
+const showWriteIn=isWriteIn||day.job===’**other**’;
+const jobOpts=jobs.map(j=>`<option value="${j}"${day.job===j?' selected':''}>${j}</option>`).join(’’);
+div.innerHTML=` <div class="day-header"> <span class="day-label">Day ${index+1}</span> <span class="day-hours" id="day-hrs-${index}">0 hrs</span> <button class="day-remove" onclick="removeDay(${index})">×</button> </div> <div class="field-row"> <div class="field-group"> <label>Date</label> <input type="date" value="${day.date||''}" onchange="updateDay(${index},'date',this.value)"> </div> <div class="field-group"> <label>Job / Project</label> <select onchange="updateDay(${index},'job',this.value)"> <option value="">— Select —</option> ${jobOpts} <option value="__other__"${showWriteIn?' selected':''}>Other / write-in</option> </select> </div> </div> ${showWriteIn?`<div class="field-row"><div class="field-group">
+<label>Job (write-in)</label>
+<input type="text" value="${day.jobWriteIn||''}" placeholder="Job name / number"
+onchange="updateDay(${index},'jobWriteIn',this.value)">
+</div></div>`:''} <div class="field-row"> <div class="field-group"> <label>Start</label> <input type="time" value="${day.start||''}" onchange="updateDay(${index},'start',this.value)"> </div> <div class="field-group"> <label>End</label> <input type="time" value="${day.end||''}" onchange="updateDay(${index},'end',this.value)"> </div> </div> <div class="field-row"> <div class="field-group"> <label>Labour Code</label> <select onchange="updateDay(${index},'code',this.value)"> <option value="">— Select —</option> ${LABOUR_MASTER.map(c=>`<option value=”${c}”${day.code===c?’ selected’:’’}>${c}</option>`).join('')} ${labourCodes.map(c=>`<option value=”${c}”${day.code===c?’ selected’:’’}>${c}</option>`).join('')} </select> </div> </div> <div class="lunch-row"> <input type="checkbox" id="lunch-${index}"${day.lunch?' checked':''} onchange="updateDay(${index},'lunch',this.checked)"> <label for="lunch-${index}">Lunch break</label> <select onchange="updateDay(${index},'lunchMins',parseInt(this.value))"${!day.lunch?' disabled':''}> <option value="30"${(!day.lunchMins||day.lunchMins===30)?' selected':''}>30 min</option> <option value="45"${day.lunchMins===45?' selected':''}>45 min</option> <option value="60"${day.lunchMins===60?' selected':''}>60 min</option> </select> </div>`;
+setTimeout(()=>calcDayHours(index),0);
+return div;
 }
 
 function calcDayHours(index){
-  const day=days[index];
-  if(!day||!day.start||!day.end)return 0;
-  const[sh,sm]=day.start.split(':').map(Number);
-  const[eh,em]=day.end.split(':').map(Number);
-  let mins=(eh*60+em)-(sh*60+sm);
-  if(day.lunch)mins-=(day.lunchMins||30);
-  const hrs=Math.max(0,mins/60);
-  const el=$(`day-hrs-${index}`);
-  if(el)el.textContent=hrs.toFixed(2)+' hrs';
-  return hrs;
+const day=days[index];
+if(!day||!day.start||!day.end)return 0;
+const[sh,sm]=day.start.split(’:’).map(Number);
+const[eh,em]=day.end.split(’:’).map(Number);
+let mins=(eh*60+em)-(sh*60+sm);
+if(day.lunch)mins-=(day.lunchMins||30);
+const hrs=Math.max(0,mins/60);
+const el=$(`day-hrs-${index}`);
+if(el)el.textContent=hrs.toFixed(2)+’ hrs’;
+return hrs;
 }
 
 function updateTotalHours(){
-  let t=0; days.forEach((_,i)=>t+=calcDayHours(i));
-  $('total-hours-display').textContent=t.toFixed(2)+' hrs';
+let t=0; days.forEach((_,i)=>t+=calcDayHours(i));
+$(‘total-hours-display’).textContent=t.toFixed(2)+’ hrs’;
 }
 
 function updateDay(index,key,value){days[index][key]=value;saveLocal();renderDays();}
 
 function addDay(){
-  days.push({date:'',job:'',jobWriteIn:'',start:'',end:'',code:'',lunch:false,lunchMins:30});
-  saveLocal(); renderDays();
+days.push({date:’’,job:’’,jobWriteIn:’’,start:’’,end:’’,code:’’,lunch:false,lunchMins:30});
+saveLocal(); renderDays();
 }
 function removeDay(index){days.splice(index,1);saveLocal();renderDays();}
 
 // ── JOBS ──
 function renderJobs(){
-  $('jobs-list').innerHTML=jobs.map((j,i)=>`<div class="chip">${j}<button class="chip-remove" onclick="removeJob(${i})">×</button></div>`).join('');
-  renderDays();
+$(‘jobs-list’).innerHTML=jobs.map((j,i)=>`<div class="chip">${j}<button class="chip-remove" onclick="removeJob(${i})">×</button></div>`).join(’’);
+renderDays();
 }
 
 async function addJob(){
-  const val=$('new-job-input').value.trim();
-  if(!val||jobs.includes(val))return;
-  jobs.push(val); $('new-job-input').value=''; saveLocal();
-  try{await db.from('jobs').upsert({code:val,description:val,active:true},{onConflict:'code'});}catch(e){}
-  renderJobs(); toast('Job added — visible to all devices','success');
+const val=$(‘new-job-input’).value.trim();
+if(!val||jobs.includes(val))return;
+jobs.push(val); $(‘new-job-input’).value=’’; saveLocal();
+try{await db.from(‘jobs’).upsert({code:val,description:val,active:true},{onConflict:‘code’});}catch(e){}
+renderJobs(); toast(‘Job added — visible to all devices’,‘success’);
 }
 
 async function removeJob(i){
-  const code=jobs[i]; jobs.splice(i,1); saveLocal();
-  try{await db.from('jobs').update({active:false}).eq('code',code);}catch(e){}
-  renderJobs();
+const code=jobs[i]; jobs.splice(i,1); saveLocal();
+try{await db.from(‘jobs’).update({active:false}).eq(‘code’,code);}catch(e){}
+renderJobs();
 }
 
 // ── LABOUR CODES ──
 function renderCodes(){
-  $('codes-list').innerHTML=labourCodes.map((c,i)=>`<div class="chip">${c}<button class="chip-remove" onclick="removeCode(${i})">×</button></div>`).join('');
-  renderDays();
+$(‘codes-list’).innerHTML=labourCodes.map((c,i)=>`<div class="chip">${c}<button class="chip-remove" onclick="removeCode(${i})">×</button></div>`).join(’’);
+renderDays();
 }
 
 async function addCode(){
-  const val=$('new-code-input').value.trim().toUpperCase();
-  if(!val||labourCodes.includes(val))return;
-  labourCodes.push(val); $('new-code-input').value=''; saveLocal();
-  try{await db.from('labour_codes').insert({employee_id:currentEmployee.id,code:val});}catch(e){}
-  renderCodes();
+const val=$(‘new-code-input’).value.trim().toUpperCase();
+if(!val||labourCodes.includes(val))return;
+labourCodes.push(val); $(‘new-code-input’).value=’’; saveLocal();
+try{await db.from(‘labour_codes’).insert({employee_id:currentEmployee.id,code:val});}catch(e){}
+renderCodes();
 }
 
 async function removeCode(i){
-  const code=labourCodes[i]; labourCodes.splice(i,1); saveLocal();
-  try{await db.from('labour_codes').delete().eq('employee_id',currentEmployee.id).eq('code',code);}catch(e){}
-  renderCodes();
+const code=labourCodes[i]; labourCodes.splice(i,1); saveLocal();
+try{await db.from(‘labour_codes’).delete().eq(‘employee_id’,currentEmployee.id).eq(‘code’,code);}catch(e){}
+renderCodes();
 }
 
 // ── VALIDATE ──
 function validate(){
-  const err=[];
-  if(!currentEmployee?.name)err.push('Set your name in the Setup tab');
-  if(days.length===0)err.push('Add at least one day');
-  days.forEach((day,i)=>{
-    const n=i+1;
-    if(!day.date)err.push(`Day ${n}: missing date`);
-    if(!day.start)err.push(`Day ${n}: missing start time`);
-    if(!day.end)err.push(`Day ${n}: missing end time`);
-    if(!day.code)err.push(`Day ${n}: missing labour code`);
-    if(!day.job&&!day.jobWriteIn)err.push(`Day ${n}: missing job / project`);
-    if(day.start&&day.end&&day.start>=day.end)err.push(`Day ${n}: end time must be after start`);
-  });
-  return err;
+const err=[];
+if(!currentEmployee?.name)err.push(‘Set your name in the Setup tab’);
+if(days.length===0)err.push(‘Add at least one day’);
+days.forEach((day,i)=>{
+const n=i+1;
+if(!day.date)err.push(`Day ${n}: missing date`);
+if(!day.start)err.push(`Day ${n}: missing start time`);
+if(!day.end)err.push(`Day ${n}: missing end time`);
+if(!day.code)err.push(`Day ${n}: missing labour code`);
+if(!day.job&&!day.jobWriteIn)err.push(`Day ${n}: missing job / project`);
+if(day.start&&day.end&&day.start>=day.end)err.push(`Day ${n}: end time must be after start`);
+});
+return err;
 }
 
 // ── SEND ──
 async function sendTimecard(){
-  const errors=validate();
-  if(errors.length){
-    $('errors-list').innerHTML=errors.map(e=>`<li>${e}</li>`).join('');
-    $('errors-card').style.display='block';
-    $('errors-card').scrollIntoView({behavior:'smooth'});
-    return;
-  }
-  $('errors-card').style.display='none';
-  $('send-btn').disabled=true; showSpinner(); setSyncState('syncing');
-  try{
-    let totalHours=0;
-    days.forEach((_,i)=>totalHours+=calcDayHours(i));
-    const weekEnding=days.map(d=>d.date).sort().pop();
-    let timecardId=null;
-    if(currentEmployee){
-      const{data:tc,error:tcErr}=await db.from('timecards').upsert({
-        employee_id:currentEmployee.id, week_ending:weekEnding,
-        total_hours:totalHours, status:'submitted', submitted_at:new Date().toISOString()
-      },{onConflict:'employee_id,week_ending'}).select().single();
-      if(tc&&!tcErr){
-        timecardId=tc.id;
-        const entries=days.map((day,i)=>({
-          timecard_id:timecardId, entry_date:day.date,
-          job_code:day.job==='__other__'||!jobs.includes(day.job)?day.jobWriteIn:day.job,
-          labour_code:day.code, start_time:day.start, end_time:day.end,
-          lunch_minutes:day.lunch?(day.lunchMins||30):0,
-          regular_hours:Math.min(calcDayHours(i),8),
-          overtime_hours:Math.max(0,calcDayHours(i)-8)
-        }));
-        await db.from('timecard_entries').delete().eq('timecard_id',timecardId);
-        await db.from('timecard_entries').insert(entries);
-      }
-    }
-    const payload={
-      name:currentEmployee?.name||currentUser.email,
-      employeeId:currentEmployee?.id,
-      totalHours:totalHours.toFixed(2), weekEnding,
-      days:days.map((day,i)=>({
-        date:day.date,
-        job:day.job==='__other__'||!jobs.includes(day.job)?day.jobWriteIn:day.job,
-        code:day.code, start:day.start, end:day.end,
-        lunch:day.lunch, lunchMins:day.lunchMins||30,
-        hours:calcDayHours(i).toFixed(2)
-      }))
-    };
-    let sheetsOk=false;
-    try{
-      const resp=await fetch(APPS_SCRIPT_URL,{method:'POST',body:JSON.stringify(payload)});
-      sheetsOk=resp.ok;
-      if(timecardId&&currentEmployee)
-        await db.from('timecards').update({apps_script_response:sheetsOk?'sent':'failed'}).eq('id',timecardId);
-    }catch(_){}
-    lastSyncTime=new Date(); setSyncState('synced',lastSyncTime);
-    toast('✓ Timecard sent'+(sheetsOk?' to Tina & saved to cloud':' to cloud (Sheets offline)'),'success');
-    days=[]; saveLocal(); renderDays();
-  }catch(err){setSyncState('offline');toast('Error: '+err.message,'error');console.error(err);}
-  hideSpinner(); $('send-btn').disabled=false;
+const errors=validate();
+if(errors.length){
+$(‘errors-list’).innerHTML=errors.map(e=>`<li>${e}</li>`).join(’’);
+$(‘errors-card’).style.display=‘block’;
+$(‘errors-card’).scrollIntoView({behavior:‘smooth’});
+return;
+}
+$(‘errors-card’).style.display=‘none’;
+$(‘send-btn’).disabled=true; showSpinner(); setSyncState(‘syncing’);
+try{
+let totalHours=0;
+days.forEach((*,i)=>totalHours+=calcDayHours(i));
+const weekEnding=days.map(d=>d.date).sort().pop();
+let timecardId=null;
+if(currentEmployee){
+const{data:tc,error:tcErr}=await db.from(‘timecards’).upsert({
+employee_id:currentEmployee.id, week_ending:weekEnding,
+total_hours:totalHours, status:‘submitted’, submitted_at:new Date().toISOString()
+},{onConflict:‘employee_id,week_ending’}).select().single();
+if(tc&&!tcErr){
+timecardId=tc.id;
+const entries=days.map((day,i)=>({
+timecard_id:timecardId, entry_date:day.date,
+job_code:day.job===’**other**’||!jobs.includes(day.job)?day.jobWriteIn:day.job,
+labour_code:day.code, start_time:day.start, end_time:day.end,
+lunch_minutes:day.lunch?(day.lunchMins||30):0,
+regular_hours:Math.min(calcDayHours(i),8),
+overtime_hours:Math.max(0,calcDayHours(i)-8)
+}));
+await db.from(‘timecard_entries’).delete().eq(‘timecard_id’,timecardId);
+await db.from(‘timecard_entries’).insert(entries);
+}
+}
+const payload={
+name:currentEmployee?.name||currentUser.email,
+employeeId:currentEmployee?.id,
+totalHours:totalHours.toFixed(2), weekEnding,
+days:days.map((day,i)=>({
+date:day.date,
+job:day.job===’**other**’||!jobs.includes(day.job)?day.jobWriteIn:day.job,
+code:day.code, start:day.start, end:day.end,
+lunch:day.lunch, lunchMins:day.lunchMins||30,
+hours:calcDayHours(i).toFixed(2)
+}))
+};
+let sheetsOk=false;
+try{
+const resp=await fetch(APPS_SCRIPT_URL,{method:‘POST’,body:JSON.stringify(payload)});
+sheetsOk=resp.ok;
+if(timecardId&&currentEmployee)
+await db.from(‘timecards’).update({apps_script_response:sheetsOk?‘sent’:‘failed’}).eq(‘id’,timecardId);
+}catch(*){}
+lastSyncTime=new Date(); setSyncState(‘synced’,lastSyncTime);
+toast(‘✓ Timecard sent’+(sheetsOk?’ to Tina & saved to cloud’:’ to cloud (Sheets offline)’),‘success’);
+days=[]; saveLocal(); renderDays();
+}catch(err){setSyncState(‘offline’);toast(’Error: ’+err.message,‘error’);console.error(err);}
+hideSpinner(); $(‘send-btn’).disabled=false;
 }
 
 // ── EXPORT ──
 function exportExcel(){
-  const name=currentEmployee?.name||'employee';
-  let csv='Name,Date,Job,Labour Code,Start,End,Lunch,Hours\n';
-  days.forEach((day,i)=>{
-    const job=day.job==='__other__'||!jobs.includes(day.job)?day.jobWriteIn:day.job;
-    csv+=[name,day.date,job,day.code,day.start,day.end,
-      day.lunch?(day.lunchMins||30)+'min':'none',calcDayHours(i).toFixed(2)].join(',')+'\n';
-  });
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
-  a.download=`timecard_${name.replace(/\s+/g,'_')}_${new Date().toISOString().split('T')[0]}.csv`;
-  a.click();
+const name=currentEmployee?.name||‘employee’;
+let csv=‘Name,Date,Job,Labour Code,Start,End,Lunch,Hours\n’;
+days.forEach((day,i)=>{
+const job=day.job===’**other**’||!jobs.includes(day.job)?day.jobWriteIn:day.job;
+csv+=[name,day.date,job,day.code,day.start,day.end,
+day.lunch?(day.lunchMins||30)+‘min’:‘none’,calcDayHours(i).toFixed(2)].join(’,’)+’\n’;
+});
+const a=document.createElement(‘a’);
+a.href=URL.createObjectURL(new Blob([csv],{type:‘text/csv’}));
+a.download=`timecard_${name.replace(/\s+/g,'_')}_${new Date().toISOString().split('T')[0]}.csv`;
+a.click();
 }
 
 function confirmClear(){
-  if(confirm('Clear all timecard entries? This cannot be undone.')){days=[];saveLocal();renderDays();}
+if(confirm(‘Clear all timecard entries? This cannot be undone.’)){days=[];saveLocal();renderDays();}
 }
 
 // ── SETUP ──
 async function saveName(){
-  const name=$('setup-name-input').value.trim();
-  if(!name)return toast('Enter a name','error');
-  if(currentEmployee){await db.from('employees').update({name}).eq('id',currentEmployee.id);currentEmployee.name=name;}
-  $('topbar-user-name').textContent=name;
-  $('setup-name-display').textContent=name;
-  saveLocal(); toast('Name saved','success');
+const name=$(‘setup-name-input’).value.trim();
+if(!name)return toast(‘Enter a name’,‘error’);
+if(currentEmployee){await db.from(‘employees’).update({name}).eq(‘id’,currentEmployee.id);currentEmployee.name=name;}
+$(‘topbar-user-name’).textContent=name;
+$(‘setup-name-display’).textContent=name;
+saveLocal(); toast(‘Name saved’,‘success’);
 }
 
 // ── ADMIN ──
 async function loadAdminData(){
-  const{data:emps}=await db.from('employees').select('*').order('name');
-  $('employee-list-admin').innerHTML=emps?.length
-    ?emps.map(e=>`<div class="employee-row"><span class="employee-row-name">${e.name}</span><span class="employee-row-role">${e.role}</span>${e.role!=='admin'?`<button class="btn btn-ghost" style="font-size:12px;padding:5px 8px" onclick="makeAdmin('${e.id}')">Make Admin</button>`:''}</div>`).join('')
-    :'<div class="empty-state">No employees found</div>';
-  const{data:tcs}=await db.from('timecards').select('*,employees(name)').eq('status','submitted').order('submitted_at',{ascending:false}).limit(20);
-  $('pending-timecards-admin').innerHTML=tcs?.length
-    ?tcs.map(tc=>`<div class="employee-row"><div style="flex:1"><div style="font-size:14px;font-weight:600">${tc.employees?.name||'—'}</div><div style="font-size:12px;color:var(--muted)">Week of ${tc.week_ending} · ${tc.total_hours} hrs</div></div><button class="btn btn-primary" style="font-size:12px;padding:6px 10px" onclick="approveTimecard('${tc.id}')">Approve</button></div>`).join('')
-    :'<div class="empty-state">No pending timecards</div>';
+const{data:emps}=await db.from(‘employees’).select(’*’).order(‘name’);
+$(‘employee-list-admin’).innerHTML=emps?.length
+?emps.map(e=>`<div class="employee-row"><span class="employee-row-name">${e.name}</span><span class="employee-row-role">${e.role}</span>${e.role!=='admin'?`<button class="btn btn-ghost" style="font-size:12px;padding:5px 8px" onclick="makeAdmin('${e.id}')">Make Admin</button>`:''}</div>`).join(’’)
+:’<div class="empty-state">No employees found</div>’;
+const{data:tcs}=await db.from(‘timecards’).select(’*,employees(name)’).eq(‘status’,‘submitted’).order(‘submitted_at’,{ascending:false}).limit(20);
+$(‘pending-timecards-admin’).innerHTML=tcs?.length
+?tcs.map(tc=>`<div class="employee-row"><div style="flex:1"><div style="font-size:14px;font-weight:600">${tc.employees?.name||'—'}</div><div style="font-size:12px;color:var(--muted)">Week of ${tc.week_ending} · ${tc.total_hours} hrs</div></div><button class="btn btn-primary" style="font-size:12px;padding:6px 10px" onclick="approveTimecard('${tc.id}')">Approve</button></div>`).join(’’)
+:’<div class="empty-state">No pending timecards</div>’;
 }
 
-async function makeAdmin(id){await db.from('employees').update({role:'admin'}).eq('id',id);loadAdminData();toast('Role updated','success');}
-async function approveTimecard(id){await db.from('timecards').update({status:'approved'}).eq('id',id);loadAdminData();toast('Timecard approved','success');}
+async function makeAdmin(id){await db.from(‘employees’).update({role:‘admin’}).eq(‘id’,id);loadAdminData();toast(‘Role updated’,‘success’);}
+async function approveTimecard(id){await db.from(‘timecards’).update({status:‘approved’}).eq(‘id’,id);loadAdminData();toast(‘Timecard approved’,‘success’);}
 
 function renderAll(){renderDays();renderJobs();renderCodes();}
 
-window.addEventListener('online',()=>loadCloudData());
-window.addEventListener('offline',()=>setSyncState('offline'));
-document.addEventListener('keydown',e=>{
-  if(e.key==='Enter'&&document.activeElement===$('login-password'))doLogin();
-  if(e.key==='Enter'&&document.activeElement===$('login-email'))doLogin();
+window.addEventListener(‘online’,()=>loadCloudData());
+window.addEventListener(‘offline’,()=>setSyncState(‘offline’));
+
+setInterval(()=>{ if(currentEmployee && navigator.onLine) loadCloudData(); }, 5*60*1000);
+
+(function(){
+let startY=0, pulling=false;
+const bar=document.createElement(‘div’);
+bar.style.cssText=‘position:fixed;top:0;left:0;right:0;height:4px;background:var(–accent);transform:scaleX(0);transform-origin:left;transition:transform .15s;z-index:9998;’;
+document.body.appendChild(bar);
+function getContent(){return document.querySelector(’.content’);}
+document.addEventListener(‘touchstart’,e=>{
+const c=getContent();
+if(c&&c.scrollTop===0){startY=e.touches[0].clientY;pulling=true;}
+},{passive:true});
+document.addEventListener(‘touchmove’,e=>{
+if(!pulling)return;
+const dy=e.touches[0].clientY-startY;
+if(dy>0&&dy<80)bar.style.transform=‘scaleX(’+dy/80+’)’;
+},{passive:true});
+document.addEventListener(‘touchend’,e=>{
+if(!pulling)return;
+const dy=e.changedTouches[0].clientY-startY;
+bar.style.transform=‘scaleX(0)’;
+pulling=false;
+if(dy>60&&currentEmployee){toast(‘Refreshing…’);loadCloudData();}
+},{passive:true});
+})();
+document.addEventListener(‘keydown’,e=>{
+if(e.key===‘Enter’&&document.activeElement===$(‘login-password’))doLogin();
+if(e.key===‘Enter’&&document.activeElement===$(‘login-email’))doLogin();
 });
 
 (async()=>{
-  const{data:{session}}=await db.auth.getSession();
-  if(session?.user){currentUser=session.user;await loadEmployeeProfile();showApp();}
+const{data:{session}}=await db.auth.getSession();
+if(session?.user){
+currentUser=session.user;
+await loadEmployeeProfile();
+showApp();
+} else {
+showAuthScreen();
+}
 })();
 </script>
+
 </body>
 </html>

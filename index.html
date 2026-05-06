@@ -989,8 +989,8 @@ async function sendToTina() {
   const cm = codeMap();
   const allRows = [];
 
-  // Aggregate breaks per day (one lunch break per day, not per task)
-  let breakDur = '', breakDate = '', totalBreakMins = 0;
+  // Build breaks array — one entry per day that has a lunch break
+  const breaks = [];
   S.days.forEach(day => {
     day.tasks.forEach(t => {
       const h = taskHours(t);
@@ -1002,18 +1002,14 @@ async function sendToTina() {
         });
       }
     });
-    // One lunch break per day
     if (day.lunch) {
-      const mins = day.lunchMins || 30;
-      if (!breakDate) breakDate = day.date;
-      totalBreakMins += mins;
+      breaks.push({
+        date: day.date,
+        hours: ((day.lunchMins || 30) / 60).toFixed(2),
+        note: 'Lunch'
+      });
     }
   });
-
-  if (totalBreakMins > 0) {
-    // Send exact break hours as decimal string
-    breakDur = (totalBreakMins / 60).toFixed(2);
-  }
 
   if (!allRows.length) { toast('No entries to send'); btn.textContent = 'Send to Tina'; btn.disabled = false; return; }
 
@@ -1021,8 +1017,7 @@ async function sendToTina() {
     emp, month,
     total: grandTotal(),
     rows: allRows,
-    breakDur, breakDate,
-    breakNote: 'Lunch'
+    breaks: breaks
   };
 
   // Save to Supabase

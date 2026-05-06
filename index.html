@@ -502,10 +502,10 @@ const $ = id => document.getElementById(id);
 const today = () => new Date().toISOString().split('T')[0];
 
 function newTask() {
-  return { id: Date.now() + (idc++), proj:'', code:'', act:'', start:'', finish:'', lunch:false, lunchMins:30 };
+  return { id: Date.now() + (idc++), proj:'', code:'', act:'', start:'', finish:'' };
 }
 function newDay(date) {
-  return { id: Date.now() + (idc++), date: date || today(), tasks: [newTask()] };
+  return { id: Date.now() + (idc++), date: date || today(), tasks: [newTask()], lunch: false, lunchMins: 30 };
 }
 
 function save() {
@@ -641,15 +641,7 @@ function renderSheet() {
     <div class="elbl">Activity description</div>
     <input type="text" class="ei" value="${t.act.replace(/"/g,'&quot;')}" placeholder="e.g. East wall framing" oninput="updTask(${day.id},${t.id},'act',this.value)"/>
   </div>
-  <div class="efull lunch-row">
-    <input type="checkbox" id="lc_${t.id}" ${t.lunch ? 'checked' : ''} onchange="onLunch(${day.id},${t.id},this.checked)"/>
-    <label for="lc_${t.id}">Lunch break</label>
-    <select class="lunch-sel" id="lm_${t.id}" onchange="updTask(${day.id},${t.id},'lunchMins',parseInt(this.value))" ${!t.lunch ? 'disabled' : ''}>
-      <option value="30" ${(!t.lunchMins || t.lunchMins===30) ? 'selected':''}>30 min</option>
-      <option value="45" ${t.lunchMins===45 ? 'selected':''}>45 min</option>
-      <option value="60" ${t.lunchMins===60 ? 'selected':''}>60 min</option>
-    </select>
-  </div>
+
 </div>`;
     }).join('');
 
@@ -665,6 +657,15 @@ function renderSheet() {
     </div>
   </div>
   ${tasksHTML}
+  <div style="padding:10px 14px;border-top:1px solid var(--navy3);display:flex;align-items:center;gap:10px;">
+    <input type="checkbox" id="dlc_${day.id}" ${day.lunch ? 'checked' : ''} onchange="onDayLunch(${day.id},this.checked)" style="width:18px;height:18px;accent-color:var(--orange);cursor:pointer;flex-shrink:0;"/>
+    <label for="dlc_${day.id}" style="font-size:13px;color:var(--muted);cursor:pointer;">Lunch break</label>
+    <select class="lunch-sel" id="dlm_${day.id}" onchange="onDayLunchMins(${day.id},parseInt(this.value))" ${!day.lunch ? 'disabled' : ''}>
+      <option value="30" ${(!day.lunchMins || day.lunchMins===30) ? 'selected':''}>30 min</option>
+      <option value="45" ${day.lunchMins===45 ? 'selected':''}>45 min</option>
+      <option value="60" ${day.lunchMins===60 ? 'selected':''}>60 min</option>
+    </select>
+  </div>
   <div style="padding:10px 14px;border-top:1px solid var(--navy3);">
     <button class="add-task-btn" onclick="addTask(${day.id})">
       <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 2v10M2 7h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
@@ -775,6 +776,22 @@ function onLunch(dayId, taskId, checked) {
   // Enable/disable the duration select
   const sel = $('lm_' + taskId);
   if (sel) sel.disabled = !checked;
+}
+
+function onDayLunch(dayId, checked) {
+  const d = S.days.find(d => d.id === dayId);
+  if (!d) return;
+  d.lunch = checked;
+  save();
+  const sel = $('dlm_' + dayId);
+  if (sel) sel.disabled = !checked;
+}
+
+function onDayLunchMins(dayId, mins) {
+  const d = S.days.find(d => d.id === dayId);
+  if (!d) return;
+  d.lunchMins = mins;
+  save();
 }
 
 function onCode(dayId, taskId, val) {
@@ -972,10 +989,9 @@ async function sendToTina() {
   const cm = codeMap();
   const allRows = [];
 
-  // Aggregate breaks per day
+  // Aggregate breaks per day (one lunch break per day, not per task)
   let breakDur = '', breakDate = '', totalBreakMins = 0;
   S.days.forEach(day => {
-    let dayBreakMins = 0;
     day.tasks.forEach(t => {
       const h = taskHours(t);
       if (h > 0 || t.proj || t.code) {
@@ -985,10 +1001,13 @@ async function sendToTina() {
           start: t.start, finish: t.finish, hours: h
         });
       }
-      if (t.lunch) dayBreakMins += (t.lunchMins || 30);
     });
-    if (dayBreakMins > 0 && !breakDate) breakDate = day.date;
-    totalBreakMins += dayBreakMins;
+    // One lunch break per day
+    if (day.lunch) {
+      const mins = day.lunchMins || 30;
+      if (!breakDate) breakDate = day.date;
+      totalBreakMins += mins;
+    }
   });
 
   if (totalBreakMins > 0) {

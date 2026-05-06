@@ -11,312 +11,143 @@
   <title>RCS Time</title>
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon-192.png">
-
-  <!-- ══════════════════════════════════════════════════
-       SUPABASE — replace the two values below with your
-       project's URL and anon key from:
-       supabase.com → project → Settings → API
-  ═══════════════════════════════════════════════════ -->
   <script>
-    const SUPABASE_URL  = 'https://fhmckfjzxduxbxfjtfob.supabase.co';   // ← REPLACE
-    const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZobWNrZmp6eGR1eGJ4Zmp0Zm9iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgwMTI5MzUsImV4cCI6MjA5MzU4ODkzNX0.paT68gCtRwoEIzUVmAI2aocXh3hSAfR49etWLeuCcFE';                      // ← REPLACE
+    const SUPABASE_URL  = 'https://fhmckfjzxduxbxfjtfob.supabase.co';
+    const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZobWNrZmp6eGR1eGJ4Zmp0Zm9iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgwMTI5MzUsImV4cCI6MjA5MzU4ODkzNX0.paT68gCtRwoEIzUVmAI2aocXh3hSAfR49etWLeuCcFE';
     const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby3_R-voW0YGmPzMJNnrKD0Lvo4UOgQb2v0TOOlohw_C8jNtsNA9SfLXiv9UUIOepT0Kg/exec';
   </script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-
   <style>
-    /* ── Reset & base ── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
-      --bg:        #0f1923;
-      --surface:   #1a2535;
-      --surface2:  #222f42;
-      --border:    #2d3f55;
-      --accent:    #f5a623;
-      --accent2:   #e8891a;
-      --danger:    #e05252;
-      --success:   #4caf82;
-      --text:      #e8edf3;
-      --muted:     #7a90a8;
-      --radius:    10px;
-      --shadow:    0 2px 12px rgba(0,0,0,.35);
+      --bg:#0f1923; --surface:#1a2535; --surface2:#222f42; --border:#2d3f55;
+      --accent:#f5a623; --accent2:#e8891a; --danger:#e05252; --success:#4caf82;
+      --text:#e8edf3; --muted:#7a90a8; --radius:10px; --shadow:0 2px 12px rgba(0,0,0,.35);
     }
-    html, body { height: 100%; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 15px; overflow: hidden; }
-
-    /* ── Auth screen ── */
-    #auth-screen {
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      height: 100vh; padding: 24px; gap: 20px;
-    }
-    #auth-screen.hidden { display: none; }
-    .auth-logo { width: 72px; height: 72px; border-radius: 16px; }
-    .auth-title { font-size: 24px; font-weight: 700; letter-spacing: -0.5px; }
-    .auth-subtitle { color: var(--muted); font-size: 13px; text-align: center; }
-    .auth-card {
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: 16px; padding: 28px; width: 100%; max-width: 380px;
-      display: flex; flex-direction: column; gap: 14px;
-    }
-    .auth-tab-row { display: flex; gap: 4px; background: var(--bg); border-radius: 8px; padding: 4px; }
-    .auth-tab {
-      flex: 1; padding: 8px; border: none; background: transparent;
-      color: var(--muted); border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;
-    }
-    .auth-tab.active { background: var(--surface2); color: var(--text); }
-    .auth-field { display: flex; flex-direction: column; gap: 6px; }
-    .auth-field label { font-size: 12px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
-    .auth-field input {
-      padding: 12px 14px; background: var(--bg); border: 1px solid var(--border);
-      border-radius: 8px; color: var(--text); font-size: 15px; outline: none;
-      transition: border-color .15s;
-    }
-    .auth-field input:focus { border-color: var(--accent); }
-    .auth-btn {
-      padding: 13px; background: var(--accent); border: none; border-radius: 8px;
-      color: #fff; font-size: 15px; font-weight: 700; cursor: pointer;
-      transition: background .15s; letter-spacing: .2px;
-    }
-    .auth-btn:hover { background: var(--accent2); }
-    .auth-btn:disabled { opacity: .6; cursor: default; }
-    .auth-msg { font-size: 13px; text-align: center; min-height: 18px; }
-    .auth-msg.error { color: var(--danger); }
-    .auth-msg.success { color: var(--success); }
-    #signup-name-field { display: none; }
-
-    /* ── Main app (hidden until logged in) ── */
-    #app { height: 100vh; display: flex; flex-direction: column; }
-    #app.hidden { display: none; }
-
-    /* ── Top bar ── */
-    .topbar {
-      background: var(--surface); border-bottom: 1px solid var(--border);
-      padding: 10px 14px; display: flex; align-items: center; gap: 10px;
-      flex-shrink: 0;
-    }
-    .topbar-logo { width: 32px; height: 32px; border-radius: 7px; }
-    .topbar-name { font-weight: 700; font-size: 16px; flex: 1; }
-    .topbar-hours { color: var(--accent); font-weight: 700; font-size: 15px; }
-    .topbar-user {
-      display: flex; align-items: center; gap: 8px;
-      background: var(--surface2); border-radius: 8px; padding: 6px 10px;
-    }
-    .topbar-user-name { font-size: 13px; font-weight: 600; color: var(--muted); max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .topbar-signout {
-      background: transparent; border: 1px solid var(--border); border-radius: 6px;
-      color: var(--muted); font-size: 12px; padding: 4px 8px; cursor: pointer;
-    }
-    .topbar-signout:hover { color: var(--danger); border-color: var(--danger); }
-
-    /* ── Sync badge ── */
-    .sync-bar {
-      display: flex; align-items: center; gap: 8px; padding: 6px 14px;
-      font-size: 12px; background: var(--surface2); border-bottom: 1px solid var(--border);
-      flex-shrink: 0;
-    }
-    .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
-    .sync-dot.synced   { background: var(--success); }
-    .sync-dot.syncing  { background: var(--accent); animation: pulse .8s infinite; }
-    .sync-dot.offline  { background: var(--danger); }
-    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
-    .sync-label { color: var(--muted); flex: 1; }
-    .sync-time  { color: var(--muted); font-size: 11px; }
-
-    /* ── Scroll content ── */
-    .content { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
-
-    /* ── Cards ── */
-    .card {
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: var(--radius); padding: 14px;
-    }
-    .card-title { font-size: 12px; text-transform: uppercase; letter-spacing: .7px; color: var(--muted); margin-bottom: 10px; font-weight: 600; }
-
-    /* ── Day entries ── */
-    .day-entry {
-      background: var(--surface2); border: 1px solid var(--border);
-      border-radius: 8px; padding: 12px; margin-bottom: 10px;
-    }
-    .day-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
-    .day-label { font-weight: 600; flex: 1; }
-    .day-hours { color: var(--accent); font-weight: 700; font-size: 14px; }
-    .day-remove { background: none; border: none; color: var(--muted); font-size: 18px; cursor: pointer; padding: 0 4px; line-height: 1; }
-    .day-remove:hover { color: var(--danger); }
-    .field-row { display: flex; gap: 8px; margin-bottom: 8px; }
-    .field-group { flex: 1; display: flex; flex-direction: column; gap: 4px; }
-    .field-group label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; }
-    .field-group input, .field-group select {
-      padding: 9px 10px; background: var(--bg); border: 1px solid var(--border);
-      border-radius: 7px; color: var(--text); font-size: 14px; width: 100%; outline: none;
-    }
-    .field-group input:focus, .field-group select:focus { border-color: var(--accent); }
-    .lunch-row { display: flex; align-items: center; gap: 8px; }
-    .lunch-row label { font-size: 12px; color: var(--muted); }
-    .lunch-row input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); }
-    .lunch-row select { padding: 6px 8px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 13px; }
-
-    /* ── Buttons ── */
-    .btn {
-      padding: 11px 16px; border: none; border-radius: 8px; cursor: pointer;
-      font-size: 14px; font-weight: 600; transition: all .15s;
-    }
-    .btn-primary { background: var(--accent); color: #fff; }
-    .btn-primary:hover { background: var(--accent2); }
-    .btn-ghost { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
-    .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
-    .btn-danger { background: transparent; color: var(--danger); border: 1px solid var(--danger); }
-    .btn-full { width: 100%; text-align: center; }
-    .btn:disabled { opacity: .5; cursor: default; }
-    .btn-row { display: flex; gap: 8px; }
-
-    /* ── Jobs/codes chips ── */
-    .chip-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
-    .chip {
-      padding: 5px 10px; background: var(--surface2); border: 1px solid var(--border);
-      border-radius: 20px; font-size: 12px; color: var(--text); display: flex; align-items: center; gap: 6px;
-    }
-    .chip-remove { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 14px; line-height: 1; padding: 0; }
-    .chip-remove:hover { color: var(--danger); }
-    .add-row { display: flex; gap: 8px; margin-top: 8px; }
-    .add-row input { flex: 1; padding: 9px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 14px; outline: none; }
-    .add-row input:focus { border-color: var(--accent); }
-
-    /* ── Bottom tab bar ── */
-    .tabbar {
-      background: var(--surface); border-top: 1px solid var(--border);
-      display: flex; flex-shrink: 0;
-    }
-    .tab-btn {
-      flex: 1; padding: 10px 4px 12px; background: none; border: none;
-      color: var(--muted); font-size: 11px; font-weight: 600; cursor: pointer;
-      display: flex; flex-direction: column; align-items: center; gap: 4px;
-      transition: color .15s; letter-spacing: .3px;
-    }
-    .tab-btn svg { width: 20px; height: 20px; }
-    .tab-btn.active { color: var(--accent); }
-    .tab-content { display: none; }
-    .tab-content.active { display: block; }
-
-    /* ── Validation errors ── */
-    .errors-box {
-      background: rgba(224,82,82,.1); border: 1px solid var(--danger);
-      border-radius: 8px; padding: 12px 14px;
-    }
-    .errors-box ul { margin: 6px 0 0 16px; }
-    .errors-box li { font-size: 13px; color: var(--danger); margin-bottom: 4px; }
-
-    /* ── Toast ── */
-    #toast {
-      position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%) translateY(20px);
-      background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
-      padding: 12px 20px; font-size: 14px; font-weight: 500; z-index: 999;
-      opacity: 0; transition: all .25s; white-space: nowrap; pointer-events: none;
-      box-shadow: var(--shadow);
-    }
-    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-    #toast.success { border-color: var(--success); color: var(--success); }
-    #toast.error   { border-color: var(--danger);  color: var(--danger); }
-
-    /* ── Spinner overlay ── */
-    #spinner {
-      position: fixed; inset: 0; background: rgba(15,25,35,.7);
-      display: flex; align-items: center; justify-content: center; z-index: 9999;
-    }
-    #spinner.hidden { display: none; }
-    .spin-ring {
-      width: 44px; height: 44px; border: 3px solid var(--border);
-      border-top-color: var(--accent); border-radius: 50%;
-      animation: spin .7s linear infinite;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    /* ── Modal ── */
-    .modal-backdrop {
-      position: fixed; inset: 0; background: rgba(0,0,0,.6);
-      display: flex; align-items: flex-end; justify-content: center; z-index: 500;
-    }
-    .modal-backdrop.hidden { display: none; }
-    .modal {
-      background: var(--surface); border-radius: 16px 16px 0 0;
-      padding: 20px; width: 100%; max-width: 500px; max-height: 85vh;
-      overflow-y: auto; border-top: 1px solid var(--border);
-    }
-    .modal h3 { font-size: 17px; font-weight: 700; margin-bottom: 16px; }
-    .modal-footer { display: flex; gap: 8px; margin-top: 16px; }
-
-    /* ── Admin badge ── */
-    .admin-badge {
-      display: inline-block; padding: 2px 7px; background: rgba(245,166,35,.15);
-      border: 1px solid var(--accent); border-radius: 4px; font-size: 10px;
-      font-weight: 700; color: var(--accent); letter-spacing: .5px; text-transform: uppercase;
-    }
-
-    /* ── Misc ── */
-    .hint { font-size: 12px; color: var(--muted); margin-top: 6px; line-height: 1.5; }
-    .divider { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
-    .section-label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .7px; color: var(--muted); margin-bottom: 10px; }
-    .empty-state { text-align: center; padding: 24px; color: var(--muted); font-size: 14px; }
-
-    /* Admin panel */
-    .employee-row {
-      display: flex; align-items: center; gap: 10px;
-      padding: 10px 0; border-bottom: 1px solid var(--border);
-    }
-    .employee-row:last-child { border-bottom: none; }
-    .employee-row-name { flex: 1; font-size: 14px; }
-    .employee-row-role { font-size: 12px; color: var(--muted); }
+    html,body{height:100%;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:15px;overflow:hidden;}
+    #auth-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;padding:24px;gap:20px;}
+    #auth-screen.hidden{display:none;}
+    .auth-logo{width:72px;height:72px;border-radius:16px;}
+    .auth-title{font-size:24px;font-weight:700;letter-spacing:-0.5px;}
+    .auth-subtitle{color:var(--muted);font-size:13px;text-align:center;}
+    .auth-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px;width:100%;max-width:380px;display:flex;flex-direction:column;gap:14px;}
+    .auth-tab-row{display:flex;gap:4px;background:var(--bg);border-radius:8px;padding:4px;}
+    .auth-tab{flex:1;padding:8px;border:none;background:transparent;color:var(--muted);border-radius:6px;cursor:pointer;font-size:14px;font-weight:500;}
+    .auth-tab.active{background:var(--surface2);color:var(--text);}
+    .auth-field{display:flex;flex-direction:column;gap:6px;}
+    .auth-field label{font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px;}
+    .auth-field input{padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:15px;outline:none;transition:border-color .15s;}
+    .auth-field input:focus{border-color:var(--accent);}
+    .auth-btn{padding:13px;background:var(--accent);border:none;border-radius:8px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;transition:background .15s;}
+    .auth-btn:hover{background:var(--accent2);}
+    .auth-btn:disabled{opacity:.6;cursor:default;}
+    .auth-msg{font-size:13px;text-align:center;min-height:18px;}
+    .auth-msg.error{color:var(--danger);}
+    .auth-msg.success{color:var(--success);}
+    #app{height:100vh;display:flex;flex-direction:column;}
+    #app.hidden{display:none;}
+    .topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:10px 14px;display:flex;align-items:center;gap:10px;flex-shrink:0;}
+    .topbar-logo{width:32px;height:32px;border-radius:7px;}
+    .topbar-name{font-weight:700;font-size:16px;flex:1;}
+    .topbar-hours{color:var(--accent);font-weight:700;font-size:15px;}
+    .topbar-user{display:flex;align-items:center;gap:8px;background:var(--surface2);border-radius:8px;padding:6px 10px;}
+    .topbar-user-name{font-size:13px;font-weight:600;color:var(--muted);max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .topbar-signout{background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:12px;padding:4px 8px;cursor:pointer;}
+    .topbar-signout:hover{color:var(--danger);border-color:var(--danger);}
+    .sync-bar{display:flex;align-items:center;gap:8px;padding:6px 14px;font-size:12px;background:var(--surface2);border-bottom:1px solid var(--border);flex-shrink:0;}
+    .sync-dot{width:7px;height:7px;border-radius:50%;background:var(--muted);flex-shrink:0;}
+    .sync-dot.synced{background:var(--success);}
+    .sync-dot.syncing{background:var(--accent);animation:pulse .8s infinite;}
+    .sync-dot.offline{background:var(--danger);}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+    .sync-label{color:var(--muted);flex:1;}
+    .sync-time{color:var(--muted);font-size:11px;}
+    .content{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:12px;}
+    .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;}
+    .card-title{font-size:12px;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:10px;font-weight:600;}
+    .day-entry{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:10px;}
+    .day-header{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+    .day-label{font-weight:600;flex:1;}
+    .day-hours{color:var(--accent);font-weight:700;font-size:14px;}
+    .day-remove{background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;padding:0 4px;line-height:1;}
+    .day-remove:hover{color:var(--danger);}
+    .field-row{display:flex;gap:8px;margin-bottom:8px;}
+    .field-group{flex:1;display:flex;flex-direction:column;gap:4px;}
+    .field-group label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;}
+    .field-group input,.field-group select{padding:9px 10px;background:var(--bg);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:14px;width:100%;outline:none;}
+    .field-group input:focus,.field-group select:focus{border-color:var(--accent);}
+    .lunch-row{display:flex;align-items:center;gap:8px;margin-top:4px;}
+    .lunch-row label{font-size:12px;color:var(--muted);}
+    .lunch-row input[type=checkbox]{width:16px;height:16px;accent-color:var(--accent);flex-shrink:0;}
+    .lunch-row select{padding:6px 8px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;}
+    .btn{padding:11px 16px;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;transition:all .15s;}
+    .btn-primary{background:var(--accent);color:#fff;}
+    .btn-primary:hover{background:var(--accent2);}
+    .btn-ghost{background:var(--surface2);color:var(--text);border:1px solid var(--border);}
+    .btn-ghost:hover{border-color:var(--accent);color:var(--accent);}
+    .btn-danger{background:transparent;color:var(--danger);border:1px solid var(--danger);}
+    .btn-full{width:100%;text-align:center;}
+    .btn:disabled{opacity:.5;cursor:default;}
+    .chip-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
+    .chip{padding:5px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;font-size:12px;color:var(--text);display:flex;align-items:center;gap:6px;}
+    .chip-remove{background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;line-height:1;padding:0;}
+    .chip-remove:hover{color:var(--danger);}
+    .add-row{display:flex;gap:8px;margin-top:8px;}
+    .add-row input{flex:1;padding:9px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;outline:none;}
+    .add-row input:focus{border-color:var(--accent);}
+    .tabbar{background:var(--surface);border-top:1px solid var(--border);display:flex;flex-shrink:0;}
+    .tab-btn{flex:1;padding:10px 4px 12px;background:none;border:none;color:var(--muted);font-size:11px;font-weight:600;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;transition:color .15s;letter-spacing:.3px;}
+    .tab-btn svg{width:20px;height:20px;}
+    .tab-btn.active{color:var(--accent);}
+    .tab-content{display:none;}
+    .tab-content.active{display:block;}
+    .errors-box{background:rgba(224,82,82,.1);border:1px solid var(--danger);border-radius:8px;padding:12px 14px;}
+    .errors-box ul{margin:6px 0 0 16px;}
+    .errors-box li{font-size:13px;color:var(--danger);margin-bottom:4px;}
+    #toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 20px;font-size:14px;font-weight:500;z-index:999;opacity:0;transition:all .25s;white-space:nowrap;pointer-events:none;box-shadow:var(--shadow);}
+    #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+    #toast.success{border-color:var(--success);color:var(--success);}
+    #toast.error{border-color:var(--danger);color:var(--danger);}
+    #spinner{position:fixed;inset:0;background:rgba(15,25,35,.7);display:flex;align-items:center;justify-content:center;z-index:9999;}
+    #spinner.hidden{display:none;}
+    .spin-ring{width:44px;height:44px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .admin-badge{display:inline-block;padding:2px 7px;background:rgba(245,166,35,.15);border:1px solid var(--accent);border-radius:4px;font-size:10px;font-weight:700;color:var(--accent);letter-spacing:.5px;text-transform:uppercase;}
+    .employee-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);}
+    .employee-row:last-child{border-bottom:none;}
+    .employee-row-name{flex:1;font-size:14px;}
+    .employee-row-role{font-size:12px;color:var(--muted);}
+    .hint{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.5;}
+    .divider{border:none;border-top:1px solid var(--border);margin:14px 0;}
+    .empty-state{text-align:center;padding:24px;color:var(--muted);font-size:14px;}
   </style>
 </head>
 <body>
-
-<!-- ══════════════════ AUTH SCREEN ══════════════════ -->
 <div id="auth-screen">
   <img src="icon-192.png" alt="" class="auth-logo">
   <div class="auth-title">RCS Time</div>
   <div class="auth-subtitle">Rococo Construction Services</div>
-
   <div class="auth-card">
     <div class="auth-tab-row">
       <button class="auth-tab active" onclick="switchAuthTab('login')">Sign In</button>
       <button class="auth-tab" onclick="switchAuthTab('signup')">Create Account</button>
     </div>
-
-    <!-- Login -->
     <div id="login-form">
-      <div class="auth-field">
-        <label>Email</label>
-        <input type="email" id="login-email" placeholder="you@example.com" autocomplete="email">
-      </div>
-      <div class="auth-field" style="margin-top:10px">
-        <label>Password</label>
-        <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password">
-      </div>
+      <div class="auth-field"><label>Email</label><input type="email" id="login-email" placeholder="you@example.com" autocomplete="email"></div>
+      <div class="auth-field" style="margin-top:10px"><label>Password</label><input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password"></div>
       <button class="auth-btn" id="login-btn" onclick="doLogin()" style="margin-top:14px">Sign In</button>
     </div>
-
-    <!-- Signup -->
     <div id="signup-form" style="display:none">
-      <div class="auth-field" id="signup-name-field" style="display:flex">
-        <label>Your Full Name</label>
-        <input type="text" id="signup-name" placeholder="e.g. Jacob Smith">
-      </div>
-      <div class="auth-field" style="margin-top:10px">
-        <label>Email</label>
-        <input type="email" id="signup-email" placeholder="you@example.com" autocomplete="email">
-      </div>
-      <div class="auth-field" style="margin-top:10px">
-        <label>Password</label>
-        <input type="password" id="signup-password" placeholder="Min 8 characters" autocomplete="new-password">
-      </div>
+      <div class="auth-field"><label>Your Full Name</label><input type="text" id="signup-name" placeholder="e.g. Jacob Smith"></div>
+      <div class="auth-field" style="margin-top:10px"><label>Email</label><input type="email" id="signup-email" placeholder="you@example.com" autocomplete="email"></div>
+      <div class="auth-field" style="margin-top:10px"><label>Password</label><input type="password" id="signup-password" placeholder="Min 8 characters" autocomplete="new-password"></div>
       <button class="auth-btn" id="signup-btn" onclick="doSignup()" style="margin-top:14px">Create Account</button>
     </div>
-
     <div class="auth-msg" id="auth-msg"></div>
   </div>
 </div>
 
-<!-- ══════════════════ MAIN APP ══════════════════ -->
 <div id="app" class="hidden">
-
   <div class="topbar">
     <img src="icon-192.png" alt="" class="topbar-logo">
     <div class="topbar-name">RCS Time</div>
@@ -326,18 +157,13 @@
       <button class="topbar-signout" onclick="doSignout()">Sign out</button>
     </div>
   </div>
-
   <div class="sync-bar">
     <div class="sync-dot" id="sync-dot"></div>
     <span class="sync-label" id="sync-label">Connecting…</span>
     <span class="sync-time" id="sync-time"></span>
   </div>
-
-  <div class="content" id="main-content">
-
-    <!-- ── TAB: Sheet (Timecard entry) ── -->
+  <div class="content">
     <div id="tab-sheet" class="tab-content active">
-
       <div class="card" id="errors-card" style="display:none">
         <div class="errors-box">
           <strong style="color:var(--danger)">⚠ Fix these before sending</strong>
@@ -347,23 +173,16 @@
           <button class="btn btn-ghost btn-full" onclick="document.getElementById('errors-card').style.display='none'">Go back and fix</button>
         </div>
       </div>
-
       <div id="days-container"></div>
-
       <button class="btn btn-ghost btn-full" onclick="addDay()">+ Add day</button>
-
       <div class="card" style="margin-top:4px">
-        <button class="btn btn-primary btn-full" id="send-btn" onclick="sendTimecard()">
-          Send to Tina
-        </button>
+        <button class="btn btn-primary btn-full" id="send-btn" onclick="sendTimecard()">Send to Tina</button>
         <div style="margin-top:8px;display:flex;gap:8px">
           <button class="btn btn-ghost btn-full" onclick="exportExcel()">Export to Excel</button>
           <button class="btn btn-danger btn-full" onclick="confirmClear()">Clear all</button>
         </div>
       </div>
     </div>
-
-    <!-- ── TAB: Codes ── -->
     <div id="tab-codes" class="tab-content">
       <div class="card">
         <div class="card-title">Projects / Jobs</div>
@@ -372,20 +191,18 @@
           <input type="text" id="new-job-input" placeholder="Job # or name" maxlength="50">
           <button class="btn btn-primary" onclick="addJob()">Add</button>
         </div>
-        <p class="hint">Jobs appear in the dropdown on each day entry.</p>
+        <p class="hint">Jobs sync to all devices instantly. Tap × to remove.</p>
       </div>
       <div class="card">
         <div class="card-title">Custom Labour Codes</div>
         <p class="hint" style="margin-bottom:8px">Add codes not in the master list.</p>
         <div class="chip-list" id="codes-list"></div>
         <div class="add-row">
-          <input type="text" id="new-code-input" placeholder="e.g. EQUIP-OP" maxlength="30">
+          <input type="text" id="new-code-input" placeholder="e.g. 9950 - Special" maxlength="40">
           <button class="btn btn-primary" onclick="addCode()">Add</button>
         </div>
       </div>
     </div>
-
-    <!-- ── TAB: Setup ── -->
     <div id="tab-setup" class="tab-content">
       <div class="card">
         <div class="card-title">Your Account</div>
@@ -396,361 +213,234 @@
           </div>
           <span class="admin-badge" id="admin-badge" style="display:none">Admin</span>
         </div>
-        <div class="auth-field">
-          <label>Display Name</label>
-          <input type="text" id="setup-name-input" placeholder="Your name">
-        </div>
+        <div class="auth-field"><label>Display Name</label><input type="text" id="setup-name-input" placeholder="Your name"></div>
         <button class="btn btn-primary" style="margin-top:10px;width:100%" onclick="saveName()">Save Name</button>
       </div>
-
       <div class="card">
-        <div class="card-title">Data Saves</div>
-        <p class="hint">
-          Your timecard data is saved automatically to Supabase cloud and your browser's local storage.
-          Export to Excel regularly as a backup.
-        </p>
+        <div class="card-title">About</div>
+        <p class="hint">Data saves automatically to Supabase cloud and your browser. Export to Excel regularly as a backup.</p>
         <hr class="divider">
-        <p class="hint">
-          <strong>Add to home screen:</strong><br>
-          iPhone → Share → "Add to Home Screen"<br>
-          Android → ⋮ → "Add to Home Screen"
-        </p>
+        <p class="hint"><strong>Add to home screen:</strong><br>iPhone → Share → "Add to Home Screen"<br>Android → ⋮ → "Add to Home Screen"</p>
       </div>
-
-      <!-- Admin panel — only shown if role=admin -->
       <div class="card" id="admin-panel" style="display:none">
         <div class="card-title">Admin — All Employees <span class="admin-badge">Admin</span></div>
-        <div id="employee-list-admin">
-          <div class="empty-state">Loading…</div>
-        </div>
+        <div id="employee-list-admin"><div class="empty-state">Loading…</div></div>
         <hr class="divider">
         <div class="card-title">Pending Timecards</div>
-        <div id="pending-timecards-admin">
-          <div class="empty-state">Loading…</div>
-        </div>
+        <div id="pending-timecards-admin"><div class="empty-state">Loading…</div></div>
       </div>
     </div>
-
-  </div><!-- /content -->
-
+  </div>
   <div class="tabbar">
-    <button class="tab-btn active" onclick="switchTab('sheet', this)">
+    <button class="tab-btn active" onclick="switchTab('sheet',this)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
       Sheet
     </button>
-    <button class="tab-btn" onclick="switchTab('codes', this)">
+    <button class="tab-btn" onclick="switchTab('codes',this)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h7"/></svg>
       Codes
     </button>
-    <button class="tab-btn" onclick="switchTab('setup', this)">
+    <button class="tab-btn" onclick="switchTab('setup',this)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
       Setup
     </button>
   </div>
-</div><!-- /app -->
+</div>
 
-<!-- Toast & spinner -->
 <div id="toast"></div>
 <div id="spinner" class="hidden"><div class="spin-ring"></div></div>
-
-<!-- ══════════════════ SCRIPTS ══════════════════ -->
 <script>
-// ── Supabase client ──────────────────────────────────────
-const { createClient } = supabase;
-const db = createClient(SUPABASE_URL, SUPABASE_ANON);
-
-// ── App state ────────────────────────────────────────────
-let currentUser  = null;
-let currentEmployee = null;  // row from employees table
-let days         = [];
-let jobs         = [];
-let labourCodes  = [];
-let syncState    = 'offline';
-let lastSyncTime = null;
-
-const LABOUR_MASTER = [
-  '1000 - Construction Labour',
-  '1011 - Site Inspection',
-  '2050 - Demolition',
-  '2100 - Septic Tank Install',
-  '2171 - Damp-proofing',
-  '2201 - Earthwork',
-  '2351 - Piles/Caissons',
-  '2480 - Landscaping',
-  '2500 - Paving',
-  '3101 - Formwork/Grade Beam',
-  '3102 - Concrete Slab Prep',
-  '3106 - ICF Labour',
-  '3305 - Exterior Concrete',
-  '3351 - Concrete Pour/Finish',
-  '4001 - Masonry',
-  '5501 - Misc Steel/Structural',
-  '6101 - Framing Labour - Wall',
-  '6102 - Framing Labour - Roof',
-  '6115 - Framing Labour - General',
-  '6200 - Millwork/Stairs',
-  '6300 - Exterior Finish/Siding',
-  '6400 - Roofing Labour',
-  '6500 - Insulation Labour',
-  '6600 - Drywall Labour',
-  '6700 - Interior Finish/Trim',
-  '6800 - Painting Labour',
-  '6900 - Flooring Labour',
-  '7100 - Doors & Windows Install',
-  '7201 - Insulation/VP Labour',
-  '7500 - Cabinet Install',
-  '8100 - Concrete Flatwork',
-  '9000 - General Labour',
-  '9100 - Travel Time',
-  '9200 - Equipment Operation',
-  '9900 - Other'
+const DEFAULT_JOBS = [
+  'Jorgenson','Mathewson','Beaver','Coop C Store','Fonagy','Hare',
+  'Kipling Ball Washrooms','Moosomin Day Care','RM Brock','RM Maryfield',
+  'White Garage','Sloan','Slykhuis Brody','Supreme','West','Wiens',
+  'Dobson','Shauna','Lequer','Carlyle Cubs','Funeral Reno'
 ];
 
-// ── UI helpers ───────────────────────────────────────────
+const LABOUR_MASTER = [
+  '1000 - Construction Labour','1011 - Site Inspection','2050 - Demolition',
+  '2100 - Septic Tank Install','2171 - Damp-proofing','2201 - Earthwork',
+  '2351 - Piles/Caissons','2480 - Landscaping','2500 - Paving',
+  '3101 - Formwork/Grade Beam','3102 - Concrete Slab Prep','3106 - ICF Labour',
+  '3305 - Exterior Concrete','3351 - Concrete Pour/Finish','4001 - Masonry',
+  '5501 - Misc Steel/Structural','6101 - Framing Labour - Wall',
+  '6102 - Framing Labour - Roof','6115 - Framing Labour - General',
+  '6200 - Millwork/Stairs','6300 - Exterior Finish/Siding','6400 - Roofing Labour',
+  '6500 - Insulation Labour','6600 - Drywall Labour','6700 - Interior Finish/Trim',
+  '6800 - Painting Labour','6900 - Flooring Labour','7100 - Doors & Windows Install',
+  '7201 - Insulation/VP Labour','7500 - Cabinet Install','8100 - Concrete Flatwork',
+  '9000 - General Labour','9100 - Travel Time','9200 - Equipment Operation','9900 - Other'
+];
+
+const { createClient } = supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_ANON);
 const $ = id => document.getElementById(id);
 
-function showSpinner()  { $('spinner').classList.remove('hidden'); }
-function hideSpinner()  { $('spinner').classList.add('hidden'); }
+let currentUser = null, currentEmployee = null;
+let days = [], jobs = [...DEFAULT_JOBS], labourCodes = [], lastSyncTime = null;
 
-function toast(msg, type = '') {
-  const el = $('toast');
-  el.textContent = msg;
-  el.className = 'show ' + type;
-  clearTimeout(el._t);
-  el._t = setTimeout(() => el.classList.remove('show'), 3200);
+// ── HELPERS ──
+function showSpinner(){$('spinner').classList.remove('hidden');}
+function hideSpinner(){$('spinner').classList.add('hidden');}
+function toast(msg,type=''){
+  const el=$('toast'); el.textContent=msg; el.className='show '+type;
+  clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove('show'),3200);
+}
+function setSyncState(s,t){
+  $('sync-dot').className='sync-dot '+s;
+  $('sync-label').textContent=s==='synced'?'Saved to cloud':s==='syncing'?'Syncing…':'Offline — saved locally';
+  if(t)$('sync-time').textContent=t.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
 }
 
-function setSyncState(state, time) {
-  syncState = state;
-  const dot   = $('sync-dot');
-  const label = $('sync-label');
-  const ts    = $('sync-time');
-  dot.className = 'sync-dot ' + state;
-  if (state === 'synced')  { label.textContent = 'Saved to cloud'; }
-  if (state === 'syncing') { label.textContent = 'Syncing…'; }
-  if (state === 'offline') { label.textContent = 'Offline — saved locally'; }
-  if (time) ts.textContent = fmtTime(time);
+// ── AUTH ──
+function switchAuthTab(tab){
+  $('login-form').style.display=tab==='login'?'block':'none';
+  $('signup-form').style.display=tab==='signup'?'block':'none';
+  document.querySelectorAll('.auth-tab').forEach((b,i)=>b.classList.toggle('active',i===(tab==='login'?0:1)));
+  $('auth-msg').textContent='';
+}
+function setAuthMsg(msg,type=''){const el=$('auth-msg');el.textContent=msg;el.className='auth-msg '+type;}
+
+async function doLogin(){
+  const email=$('login-email').value.trim(), pass=$('login-password').value;
+  if(!email||!pass)return setAuthMsg('Enter email and password.','error');
+  $('login-btn').disabled=true; setAuthMsg('Signing in…');
+  const{error}=await db.auth.signInWithPassword({email,password:pass});
+  $('login-btn').disabled=false;
+  if(error)setAuthMsg(error.message,'error');
 }
 
-function fmtTime(d) {
-  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+async function doSignup(){
+  const name=$('signup-name').value.trim(), email=$('signup-email').value.trim(), pass=$('signup-password').value;
+  if(!name)return setAuthMsg('Enter your full name.','error');
+  if(!email)return setAuthMsg('Enter your email.','error');
+  if(pass.length<8)return setAuthMsg('Password must be 8+ characters.','error');
+  $('signup-btn').disabled=true; setAuthMsg('Creating account…');
+  const{data,error}=await db.auth.signUp({email,password:pass,options:{data:{full_name:name}}});
+  $('signup-btn').disabled=false;
+  if(error)return setAuthMsg(error.message,'error');
+  if(data.user)await db.from('employees').insert({auth_uid:data.user.id,name,role:'employee'});
+  setAuthMsg('Account created! Check your email to confirm, then sign in.','success');
 }
 
-// ── Auth tab toggle ──────────────────────────────────────
-function switchAuthTab(tab) {
-  $('login-form').style.display  = tab === 'login'  ? 'block' : 'none';
-  $('signup-form').style.display = tab === 'signup' ? 'block' : 'none';
-  document.querySelectorAll('.auth-tab').forEach((btn, i) => {
-    btn.classList.toggle('active', (i === 0) === (tab === 'login'));
-  });
-  $('auth-msg').textContent = '';
-}
+async function doSignout(){await db.auth.signOut();}
 
-function setAuthMsg(msg, type='') {
-  const el = $('auth-msg');
-  el.textContent = msg;
-  el.className = 'auth-msg ' + type;
-}
-
-// ── Login ────────────────────────────────────────────────
-async function doLogin() {
-  const email = $('login-email').value.trim();
-  const pass  = $('login-password').value;
-  if (!email || !pass) return setAuthMsg('Enter email and password.', 'error');
-  $('login-btn').disabled = true;
-  setAuthMsg('Signing in…');
-  const { error } = await db.auth.signInWithPassword({ email, password: pass });
-  $('login-btn').disabled = false;
-  if (error) setAuthMsg(error.message, 'error');
-  // session change will fire onAuthStateChange
-}
-
-// ── Signup ───────────────────────────────────────────────
-async function doSignup() {
-  const name  = $('signup-name').value.trim();
-  const email = $('signup-email').value.trim();
-  const pass  = $('signup-password').value;
-  if (!name)  return setAuthMsg('Enter your full name.', 'error');
-  if (!email) return setAuthMsg('Enter your email.', 'error');
-  if (pass.length < 8) return setAuthMsg('Password must be 8+ characters.', 'error');
-  $('signup-btn').disabled = true;
-  setAuthMsg('Creating account…');
-  const { data, error } = await db.auth.signUp({
-    email, password: pass,
-    options: { data: { full_name: name } }
-  });
-  $('signup-btn').disabled = false;
-  if (error) return setAuthMsg(error.message, 'error');
-  // Create employee record
-  if (data.user) {
-    await db.from('employees').insert({
-      auth_uid: data.user.id,
-      name:     name,
-      role:     'employee'
-    });
-  }
-  setAuthMsg('Account created! Check your email to confirm, then sign in.', 'success');
-}
-
-// ── Sign out ─────────────────────────────────────────────
-async function doSignout() {
-  await db.auth.signOut();
-}
-
-// ── Auth state listener ──────────────────────────────────
-db.auth.onAuthStateChange(async (event, session) => {
-  if (session?.user) {
-    currentUser = session.user;
-    await loadEmployeeProfile();
-    showApp();
-  } else {
-    currentUser = null;
-    currentEmployee = null;
-    showAuthScreen();
-  }
+db.auth.onAuthStateChange(async(event,session)=>{
+  if(session?.user){currentUser=session.user;await loadEmployeeProfile();showApp();}
+  else{currentUser=null;currentEmployee=null;showAuthScreen();}
 });
 
-async function loadEmployeeProfile() {
-  const { data } = await db.from('employees')
-    .select('*')
-    .eq('auth_uid', currentUser.id)
-    .single();
-  currentEmployee = data;
+async function loadEmployeeProfile(){
+  const{data}=await db.from('employees').select('*').eq('auth_uid',currentUser.id).single();
+  currentEmployee=data;
 }
 
-function showApp() {
+// ── SHOW/HIDE ──
+function showApp(){
   $('auth-screen').classList.add('hidden');
   $('app').classList.remove('hidden');
-  const name = currentEmployee?.name || currentUser.email;
-  $('topbar-user-name').textContent = name;
-  $('setup-name-display').textContent = name;
-  $('setup-email-display').textContent = currentUser.email;
-  $('setup-name-input').value = name;
-  if (currentEmployee?.role === 'admin') {
-    $('admin-badge').style.display = 'inline-block';
-    $('admin-panel').style.display = 'block';
+  const name=currentEmployee?.name||currentUser.email;
+  $('topbar-user-name').textContent=name;
+  $('setup-name-display').textContent=name;
+  $('setup-email-display').textContent=currentUser.email;
+  $('setup-name-input').value=name;
+  if(currentEmployee?.role==='admin'){
+    $('admin-badge').style.display='inline-block';
+    $('admin-panel').style.display='block';
     loadAdminData();
   }
   loadLocalState();
   loadCloudData();
 }
+function showAuthScreen(){$('auth-screen').classList.remove('hidden');$('app').classList.add('hidden');}
 
-function showAuthScreen() {
-  $('auth-screen').classList.remove('hidden');
-  $('app').classList.add('hidden');
+// ── STORAGE ──
+function saveLocal(){
+  localStorage.setItem('rcs_days',JSON.stringify(days));
+  localStorage.setItem('rcs_jobs',JSON.stringify(jobs));
+  localStorage.setItem('rcs_codes',JSON.stringify(labourCodes));
+}
+function loadLocalState(){
+  days=JSON.parse(localStorage.getItem('rcs_days')||'[]');
+  const sj=localStorage.getItem('rcs_jobs');
+  jobs=sj?JSON.parse(sj):[...DEFAULT_JOBS];
+  labourCodes=JSON.parse(localStorage.getItem('rcs_codes')||'[]');
+  renderAll(); setSyncState('offline');
 }
 
-// ── Tab switching ─────────────────────────────────────────
-function switchTab(name, btn) {
-  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
-  $('tab-' + name).classList.add('active');
-  btn.classList.add('active');
-}
-
-// ── Save name ────────────────────────────────────────────
-async function saveName() {
-  const name = $('setup-name-input').value.trim();
-  if (!name) return toast('Enter a name', 'error');
-  if (currentEmployee) {
-    await db.from('employees').update({ name }).eq('id', currentEmployee.id);
-    currentEmployee.name = name;
-  }
-  $('topbar-user-name').textContent = name;
-  $('setup-name-display').textContent = name;
-  saveLocal();
-  toast('Name saved', 'success');
-}
-
-// ── Local storage ─────────────────────────────────────────
-function saveLocal() {
-  localStorage.setItem('rcs_days', JSON.stringify(days));
-  localStorage.setItem('rcs_jobs', JSON.stringify(jobs));
-  localStorage.setItem('rcs_codes', JSON.stringify(labourCodes));
-}
-
-function loadLocalState() {
-  days        = JSON.parse(localStorage.getItem('rcs_days')  || '[]');
-  const DEFAULT_JOBS = ['Jorgenson','Mathewson','Beaver','Coop C Store','Fonagy','Hare','Kipling Ball Washrooms','Moosomin Day Care','RM Brock','RM Maryfield','White Garage','Sloan','Slykhuis Brody','Supreme','West','Wiens','Dobson','Shauna','Lequer','Carlyle Cubs','Funeral Reno'];
-  jobs = JSON.parse(localStorage.getItem('rcs_jobs') || JSON.stringify(DEFAULT_JOBS));
-  labourCodes = JSON.parse(localStorage.getItem('rcs_codes') || '[]');
-  renderAll();
-  setSyncState('offline');
-}
-
-// ── Cloud sync ────────────────────────────────────────────
-async function loadCloudData() {
-  if (!currentEmployee) return;
+// ── CLOUD SYNC ──
+async function loadCloudData(){
+  if(!currentEmployee)return;
   setSyncState('syncing');
-  try {
-    // Load jobs from cloud
-    const { data: jobRows } = await db.from('jobs').select('*').eq('active', true).order('code');
-    if (jobRows?.length) jobs = jobRows.map(r => r.code);
-
-    // Load custom labour codes from cloud
-    const { data: codeRows } = await db.from('labour_codes')
-      .select('*').eq('employee_id', currentEmployee.id);
-    if (codeRows) labourCodes = codeRows.map(r => r.code);
-
-    saveLocal();
-    renderAll();
-    lastSyncTime = new Date();
-    setSyncState('synced', lastSyncTime);
-  } catch (e) {
-    setSyncState('offline');
-    console.error('Cloud load error:', e);
-  }
+  try{
+    const{data:jobRows}=await db.from('jobs').select('*').eq('active',true).order('code');
+    if(jobRows&&jobRows.length>0){
+      jobs=jobRows.map(r=>r.code);
+    } else {
+      // Seed defaults into cloud on first login
+      jobs=[...DEFAULT_JOBS];
+      await db.from('jobs').upsert(DEFAULT_JOBS.map(j=>({code:j,description:j,active:true})),{onConflict:'code'});
+    }
+    const{data:codeRows}=await db.from('labour_codes').select('*').eq('employee_id',currentEmployee.id);
+    if(codeRows)labourCodes=codeRows.map(r=>r.code);
+    saveLocal(); renderAll();
+    lastSyncTime=new Date(); setSyncState('synced',lastSyncTime);
+  } catch(e){setSyncState('offline');console.error(e);}
 }
 
-// ── Days render ───────────────────────────────────────────
-function renderDays() {
-  const container = $('days-container');
-  container.innerHTML = '';
-  days.forEach((day, i) => {
-    container.appendChild(buildDayCard(day, i));
-  });
+// ── TABS ──
+function switchTab(name,btn){
+  document.querySelectorAll('.tab-content').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(el=>el.classList.remove('active'));
+  $('tab-'+name).classList.add('active'); btn.classList.add('active');
+}
+
+// ── DAYS ──
+function renderDays(){
+  const c=$('days-container'); c.innerHTML='';
+  days.forEach((day,i)=>c.appendChild(buildDayCard(day,i)));
   updateTotalHours();
 }
 
-function buildDayCard(day, index) {
-  const div = document.createElement('div');
-  div.className = 'day-entry';
-  div.innerHTML = `
+function buildDayCard(day,index){
+  const div=document.createElement('div');
+  div.className='day-entry';
+  const isWriteIn=day.job&&day.job!=='__other__'&&!jobs.includes(day.job);
+  const showWriteIn=isWriteIn||day.job==='__other__';
+  const jobOpts=jobs.map(j=>`<option value="${j}"${day.job===j?' selected':''}>${j}</option>`).join('');
+  div.innerHTML=`
     <div class="day-header">
-      <span class="day-label">Day ${index + 1}</span>
+      <span class="day-label">Day ${index+1}</span>
       <span class="day-hours" id="day-hrs-${index}">0 hrs</span>
       <button class="day-remove" onclick="removeDay(${index})">×</button>
     </div>
     <div class="field-row">
       <div class="field-group">
         <label>Date</label>
-        <input type="date" value="${day.date || ''}" onchange="updateDay(${index},'date',this.value)">
+        <input type="date" value="${day.date||''}" onchange="updateDay(${index},'date',this.value)">
       </div>
       <div class="field-group">
         <label>Job / Project</label>
         <select onchange="updateDay(${index},'job',this.value)">
           <option value="">— Select —</option>
-          ${jobs.map(j => `<option value="${j}" ${day.job===j?'selected':''}>${j}</option>`).join('')}
-          <option value="__other__" ${!jobs.includes(day.job)&&day.job?'selected':''}>Other / write-in</option>
+          ${jobOpts}
+          <option value="__other__"${showWriteIn?' selected':''}>Other / write-in</option>
         </select>
       </div>
     </div>
-    ${(!jobs.includes(day.job) && day.job) || day.job === '__other__' ? `
-    <div class="field-row">
-      <div class="field-group">
-        <label>Job (write-in)</label>
-        <input type="text" value="${day.jobWriteIn||''}" placeholder="Job name / number"
-          onchange="updateDay(${index},'jobWriteIn',this.value)">
-      </div>
-    </div>` : ''}
+    ${showWriteIn?`<div class="field-row"><div class="field-group">
+      <label>Job (write-in)</label>
+      <input type="text" value="${day.jobWriteIn||''}" placeholder="Job name / number"
+        onchange="updateDay(${index},'jobWriteIn',this.value)">
+    </div></div>`:''}
     <div class="field-row">
       <div class="field-group">
         <label>Start</label>
-        <input type="time" value="${day.start || ''}" onchange="updateDay(${index},'start',this.value)">
+        <input type="time" value="${day.start||''}" onchange="updateDay(${index},'start',this.value)">
       </div>
       <div class="field-group">
         <label>End</label>
-        <input type="time" value="${day.end || ''}" onchange="updateDay(${index},'end',this.value)">
+        <input type="time" value="${day.end||''}" onchange="updateDay(${index},'end',this.value)">
       </div>
     </div>
     <div class="field-row">
@@ -758,346 +448,225 @@ function buildDayCard(day, index) {
         <label>Labour Code</label>
         <select onchange="updateDay(${index},'code',this.value)">
           <option value="">— Select —</option>
-          ${LABOUR_MASTER.map(c => `<option value="${c}" ${day.code===c?'selected':''}>${c}</option>`).join('')}
-          ${labourCodes.map(c => `<option value="${c}" ${day.code===c?'selected':''}>${c}</option>`).join('')}
+          ${LABOUR_MASTER.map(c=>`<option value="${c}"${day.code===c?' selected':''}>${c}</option>`).join('')}
+          ${labourCodes.map(c=>`<option value="${c}"${day.code===c?' selected':''}>${c}</option>`).join('')}
         </select>
       </div>
     </div>
     <div class="lunch-row">
-      <input type="checkbox" id="lunch-${index}" ${day.lunch?'checked':''} onchange="updateDay(${index},'lunch',this.checked)">
+      <input type="checkbox" id="lunch-${index}"${day.lunch?' checked':''}
+        onchange="updateDay(${index},'lunch',this.checked)">
       <label for="lunch-${index}">Lunch break</label>
-      <select onchange="updateDay(${index},'lunchMins',parseInt(this.value))" ${!day.lunch?'disabled':''}>
-        <option value="30" ${day.lunchMins===30||!day.lunchMins?'selected':''}>30 min</option>
-        <option value="45" ${day.lunchMins===45?'selected':''}>45 min</option>
-        <option value="60" ${day.lunchMins===60?'selected':''}>60 min</option>
+      <select onchange="updateDay(${index},'lunchMins',parseInt(this.value))"${!day.lunch?' disabled':''}>
+        <option value="30"${(!day.lunchMins||day.lunchMins===30)?' selected':''}>30 min</option>
+        <option value="45"${day.lunchMins===45?' selected':''}>45 min</option>
+        <option value="60"${day.lunchMins===60?' selected':''}>60 min</option>
       </select>
-    </div>
-  `;
-  // Calculate hours after render
-  setTimeout(() => calcDayHours(index), 0);
+    </div>`;
+  setTimeout(()=>calcDayHours(index),0);
   return div;
 }
 
-function calcDayHours(index) {
-  const day = days[index];
-  if (!day?.start || !day?.end) return 0;
-  const [sh, sm] = day.start.split(':').map(Number);
-  const [eh, em] = day.end.split(':').map(Number);
-  let mins = (eh * 60 + em) - (sh * 60 + sm);
-  if (day.lunch) mins -= (day.lunchMins || 30);
-  const hrs = Math.max(0, mins / 60);
-  const el = $(`day-hrs-${index}`);
-  if (el) el.textContent = hrs.toFixed(2) + ' hrs';
+function calcDayHours(index){
+  const day=days[index];
+  if(!day||!day.start||!day.end)return 0;
+  const[sh,sm]=day.start.split(':').map(Number);
+  const[eh,em]=day.end.split(':').map(Number);
+  let mins=(eh*60+em)-(sh*60+sm);
+  if(day.lunch)mins-=(day.lunchMins||30);
+  const hrs=Math.max(0,mins/60);
+  const el=$(`day-hrs-${index}`);
+  if(el)el.textContent=hrs.toFixed(2)+' hrs';
   return hrs;
 }
 
-function updateTotalHours() {
-  let total = 0;
-  days.forEach((_, i) => total += calcDayHours(i));
-  $('total-hours-display').textContent = total.toFixed(2) + ' hrs';
+function updateTotalHours(){
+  let t=0; days.forEach((_,i)=>t+=calcDayHours(i));
+  $('total-hours-display').textContent=t.toFixed(2)+' hrs';
 }
 
-function updateDay(index, key, value) {
-  days[index][key] = value;
-  saveLocal();
-  renderDays(); // re-render to handle conditional fields
-}
+function updateDay(index,key,value){days[index][key]=value;saveLocal();renderDays();}
 
-function addDay() {
-  days.push({ date: '', job: '', start: '', end: '', code: '', lunch: false, lunchMins: 30 });
-  saveLocal();
+function addDay(){
+  days.push({date:'',job:'',jobWriteIn:'',start:'',end:'',code:'',lunch:false,lunchMins:30});
+  saveLocal(); renderDays();
+}
+function removeDay(index){days.splice(index,1);saveLocal();renderDays();}
+
+// ── JOBS ──
+function renderJobs(){
+  $('jobs-list').innerHTML=jobs.map((j,i)=>`<div class="chip">${j}<button class="chip-remove" onclick="removeJob(${i})">×</button></div>`).join('');
   renderDays();
 }
 
-function removeDay(index) {
-  days.splice(index, 1);
-  saveLocal();
-  renderDays();
+async function addJob(){
+  const val=$('new-job-input').value.trim();
+  if(!val||jobs.includes(val))return;
+  jobs.push(val); $('new-job-input').value=''; saveLocal();
+  try{await db.from('jobs').upsert({code:val,description:val,active:true},{onConflict:'code'});}catch(e){}
+  renderJobs(); toast('Job added — visible to all devices','success');
 }
 
-// ── Jobs ─────────────────────────────────────────────────
-function renderJobs() {
-  const list = $('jobs-list');
-  list.innerHTML = jobs.map((j, i) => `
-    <div class="chip">${j}
-      <button class="chip-remove" onclick="removeJob(${i})">×</button>
-    </div>`).join('');
-  renderDays(); // refresh dropdowns
-}
-
-async function addJob() {
-  const val = $('new-job-input').value.trim();
-  if (!val || jobs.includes(val)) return;
-  jobs.push(val);
-  $('new-job-input').value = '';
-  saveLocal();
-  // Sync to cloud
-  if (currentEmployee) {
-    await db.from('jobs').upsert({ code: val, description: val }, { onConflict: 'code' });
-  }
+async function removeJob(i){
+  const code=jobs[i]; jobs.splice(i,1); saveLocal();
+  try{await db.from('jobs').update({active:false}).eq('code',code);}catch(e){}
   renderJobs();
 }
 
-async function removeJob(i) {
-  const code = jobs[i];
-  jobs.splice(i, 1);
-  saveLocal();
-  if (currentEmployee) {
-    await db.from('jobs').update({ active: false }).eq('code', code);
-  }
-  renderJobs();
-}
-
-// ── Labour codes ──────────────────────────────────────────
-function renderCodes() {
-  const list = $('codes-list');
-  list.innerHTML = labourCodes.map((c, i) => `
-    <div class="chip">${c}
-      <button class="chip-remove" onclick="removeCode(${i})">×</button>
-    </div>`).join('');
+// ── LABOUR CODES ──
+function renderCodes(){
+  $('codes-list').innerHTML=labourCodes.map((c,i)=>`<div class="chip">${c}<button class="chip-remove" onclick="removeCode(${i})">×</button></div>`).join('');
   renderDays();
 }
 
-async function addCode() {
-  const val = $('new-code-input').value.trim().toUpperCase();
-  if (!val || labourCodes.includes(val)) return;
-  labourCodes.push(val);
-  $('new-code-input').value = '';
-  saveLocal();
-  if (currentEmployee) {
-    await db.from('labour_codes').insert({ employee_id: currentEmployee.id, code: val });
-  }
+async function addCode(){
+  const val=$('new-code-input').value.trim().toUpperCase();
+  if(!val||labourCodes.includes(val))return;
+  labourCodes.push(val); $('new-code-input').value=''; saveLocal();
+  try{await db.from('labour_codes').insert({employee_id:currentEmployee.id,code:val});}catch(e){}
   renderCodes();
 }
 
-async function removeCode(i) {
-  const code = labourCodes[i];
-  labourCodes.splice(i, 1);
-  saveLocal();
-  if (currentEmployee) {
-    await db.from('labour_codes').delete()
-      .eq('employee_id', currentEmployee.id).eq('code', code);
-  }
+async function removeCode(i){
+  const code=labourCodes[i]; labourCodes.splice(i,1); saveLocal();
+  try{await db.from('labour_codes').delete().eq('employee_id',currentEmployee.id).eq('code',code);}catch(e){}
   renderCodes();
 }
 
-// ── Validation ────────────────────────────────────────────
-function validate() {
-  const errors = [];
-  if (!currentEmployee?.name) errors.push('Set your name in the Setup tab');
-  if (days.length === 0) errors.push('Add at least one day');
-  days.forEach((day, i) => {
-    if (!day.date)  errors.push(`Day ${i+1}: missing date`);
-    if (!day.start) errors.push(`Day ${i+1}: missing start time`);
-    if (!day.end)   errors.push(`Day ${i+1}: missing end time`);
-    if (!day.code)  errors.push(`Day ${i+1}: missing labour code`);
-    if (day.start && day.end && day.start >= day.end) errors.push(`Day ${i+1}: end must be after start`);
+// ── VALIDATE ──
+function validate(){
+  const err=[];
+  if(!currentEmployee?.name)err.push('Set your name in the Setup tab');
+  if(days.length===0)err.push('Add at least one day');
+  days.forEach((day,i)=>{
+    const n=i+1;
+    if(!day.date)err.push(`Day ${n}: missing date`);
+    if(!day.start)err.push(`Day ${n}: missing start time`);
+    if(!day.end)err.push(`Day ${n}: missing end time`);
+    if(!day.code)err.push(`Day ${n}: missing labour code`);
+    if(!day.job&&!day.jobWriteIn)err.push(`Day ${n}: missing job / project`);
+    if(day.start&&day.end&&day.start>=day.end)err.push(`Day ${n}: end time must be after start`);
   });
-  return errors;
+  return err;
 }
 
-// ── Send timecard ─────────────────────────────────────────
-async function sendTimecard() {
-  const errors = validate();
-  if (errors.length) {
-    $('errors-list').innerHTML = errors.map(e => `<li>${e}</li>`).join('');
-    $('errors-card').style.display = 'block';
-    $('errors-card').scrollIntoView({ behavior: 'smooth' });
+// ── SEND ──
+async function sendTimecard(){
+  const errors=validate();
+  if(errors.length){
+    $('errors-list').innerHTML=errors.map(e=>`<li>${e}</li>`).join('');
+    $('errors-card').style.display='block';
+    $('errors-card').scrollIntoView({behavior:'smooth'});
     return;
   }
-  $('errors-card').style.display = 'none';
-  $('send-btn').disabled = true;
-  showSpinner();
-  setSyncState('syncing');
-
-  try {
-    // 1. Calculate totals
-    let totalHours = 0;
-    days.forEach((_, i) => totalHours += calcDayHours(i));
-
-    // 2. Save timecard to Supabase
-    const weekEnding = days.map(d => d.date).sort().pop(); // latest date
-    let timecardId = null;
-
-    if (currentEmployee) {
-      const { data: tc, error: tcErr } = await db.from('timecards').upsert({
-        employee_id: currentEmployee.id,
-        week_ending: weekEnding,
-        total_hours: totalHours,
-        status: 'submitted',
-        submitted_at: new Date().toISOString()
-      }, { onConflict: 'employee_id,week_ending' }).select().single();
-
-      if (tc && !tcErr) {
-        timecardId = tc.id;
-        // Insert entries
-        const entries = days.map(day => ({
-          timecard_id:    timecardId,
-          entry_date:     day.date,
-          job_code:       day.job === '__other__' ? day.jobWriteIn : day.job,
-          labour_code:    day.code,
-          start_time:     day.start,
-          end_time:       day.end,
-          lunch_minutes:  day.lunch ? (day.lunchMins || 30) : 0,
-          regular_hours:  Math.min(calcDayHours(days.indexOf(day)), 8),
-          overtime_hours: Math.max(0, calcDayHours(days.indexOf(day)) - 8)
+  $('errors-card').style.display='none';
+  $('send-btn').disabled=true; showSpinner(); setSyncState('syncing');
+  try{
+    let totalHours=0;
+    days.forEach((_,i)=>totalHours+=calcDayHours(i));
+    const weekEnding=days.map(d=>d.date).sort().pop();
+    let timecardId=null;
+    if(currentEmployee){
+      const{data:tc,error:tcErr}=await db.from('timecards').upsert({
+        employee_id:currentEmployee.id, week_ending:weekEnding,
+        total_hours:totalHours, status:'submitted', submitted_at:new Date().toISOString()
+      },{onConflict:'employee_id,week_ending'}).select().single();
+      if(tc&&!tcErr){
+        timecardId=tc.id;
+        const entries=days.map((day,i)=>({
+          timecard_id:timecardId, entry_date:day.date,
+          job_code:day.job==='__other__'||!jobs.includes(day.job)?day.jobWriteIn:day.job,
+          labour_code:day.code, start_time:day.start, end_time:day.end,
+          lunch_minutes:day.lunch?(day.lunchMins||30):0,
+          regular_hours:Math.min(calcDayHours(i),8),
+          overtime_hours:Math.max(0,calcDayHours(i)-8)
         }));
-        await db.from('timecard_entries').delete().eq('timecard_id', timecardId);
+        await db.from('timecard_entries').delete().eq('timecard_id',timecardId);
         await db.from('timecard_entries').insert(entries);
       }
     }
-
-    // 3. Also send to Google Sheets (existing webhook)
-    const payload = {
-      name:       currentEmployee?.name || currentUser.email,
-      employeeId: currentEmployee?.id,
-      totalHours: totalHours.toFixed(2),
-      weekEnding: weekEnding,
-      days: days.map((day, i) => ({
-        date:       day.date,
-        job:        day.job === '__other__' ? day.jobWriteIn : day.job,
-        code:       day.code,
-        start:      day.start,
-        end:        day.end,
-        lunch:      day.lunch,
-        lunchMins:  day.lunchMins || 30,
-        hours:      calcDayHours(i).toFixed(2)
+    const payload={
+      name:currentEmployee?.name||currentUser.email,
+      employeeId:currentEmployee?.id,
+      totalHours:totalHours.toFixed(2), weekEnding,
+      days:days.map((day,i)=>({
+        date:day.date,
+        job:day.job==='__other__'||!jobs.includes(day.job)?day.jobWriteIn:day.job,
+        code:day.code, start:day.start, end:day.end,
+        lunch:day.lunch, lunchMins:day.lunchMins||30,
+        hours:calcDayHours(i).toFixed(2)
       }))
     };
-
-    let sheetsOk = false;
-    try {
-      const resp = await fetch(APPS_SCRIPT_URL, {
-        method: 'POST',
-        body: JSON.stringify(payload)
-      });
-      sheetsOk = resp.ok;
-      // Update timecard with Apps Script response note
-      if (timecardId && currentEmployee) {
-        await db.from('timecards').update({ apps_script_response: sheetsOk ? 'sent' : 'failed' })
-          .eq('id', timecardId);
-      }
-    } catch (_) {}
-
-    lastSyncTime = new Date();
-    setSyncState('synced', lastSyncTime);
-    toast('✓ Timecard sent' + (sheetsOk ? ' to Tina & saved to cloud' : ' to cloud (Sheets offline)'), 'success');
-
-    // Clear days after successful send
-    days = [];
-    saveLocal();
-    renderDays();
-
-  } catch (err) {
-    setSyncState('offline');
-    toast('Error sending timecard: ' + err.message, 'error');
-    console.error(err);
-  }
-
-  hideSpinner();
-  $('send-btn').disabled = false;
+    let sheetsOk=false;
+    try{
+      const resp=await fetch(APPS_SCRIPT_URL,{method:'POST',body:JSON.stringify(payload)});
+      sheetsOk=resp.ok;
+      if(timecardId&&currentEmployee)
+        await db.from('timecards').update({apps_script_response:sheetsOk?'sent':'failed'}).eq('id',timecardId);
+    }catch(_){}
+    lastSyncTime=new Date(); setSyncState('synced',lastSyncTime);
+    toast('✓ Timecard sent'+(sheetsOk?' to Tina & saved to cloud':' to cloud (Sheets offline)'),'success');
+    days=[]; saveLocal(); renderDays();
+  }catch(err){setSyncState('offline');toast('Error: '+err.message,'error');console.error(err);}
+  hideSpinner(); $('send-btn').disabled=false;
 }
 
-// ── Export to Excel ───────────────────────────────────────
-function exportExcel() {
-  const name = currentEmployee?.name || 'employee';
-  let csv = 'Name,Date,Job,Labour Code,Start,End,Lunch,Hours\n';
-  days.forEach((day, i) => {
-    const hrs = calcDayHours(i).toFixed(2);
-    const job = day.job === '__other__' ? day.jobWriteIn : day.job;
-    csv += [name, day.date, job, day.code, day.start, day.end,
-            day.lunch ? (day.lunchMins||30)+'min' : 'none', hrs].join(',') + '\n';
+// ── EXPORT ──
+function exportExcel(){
+  const name=currentEmployee?.name||'employee';
+  let csv='Name,Date,Job,Labour Code,Start,End,Lunch,Hours\n';
+  days.forEach((day,i)=>{
+    const job=day.job==='__other__'||!jobs.includes(day.job)?day.jobWriteIn:day.job;
+    csv+=[name,day.date,job,day.code,day.start,day.end,
+      day.lunch?(day.lunchMins||30)+'min':'none',calcDayHours(i).toFixed(2)].join(',')+'\n';
   });
-  const blob = new Blob([csv], { type: 'text/csv' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `timecard_${name.replace(/\s+/g,'_')}_${new Date().toISOString().split('T')[0]}.csv`;
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download=`timecard_${name.replace(/\s+/g,'_')}_${new Date().toISOString().split('T')[0]}.csv`;
   a.click();
 }
 
-// ── Clear all ─────────────────────────────────────────────
-function confirmClear() {
-  if (confirm('Clear all timecard entries? This cannot be undone.')) {
-    days = [];
-    saveLocal();
-    renderDays();
-  }
+function confirmClear(){
+  if(confirm('Clear all timecard entries? This cannot be undone.')){days=[];saveLocal();renderDays();}
 }
 
-// ── Admin functions ───────────────────────────────────────
-async function loadAdminData() {
-  // Load all employees
-  const { data: emps } = await db.from('employees').select('*').order('name');
-  const empList = $('employee-list-admin');
-  if (emps?.length) {
-    empList.innerHTML = emps.map(e => `
-      <div class="employee-row">
-        <span class="employee-row-name">${e.name}</span>
-        <span class="employee-row-role">${e.role}</span>
-        ${e.role !== 'admin' ? `<button class="btn btn-ghost" style="font-size:12px;padding:5px 8px" onclick="makeAdmin('${e.id}')">Make Admin</button>` : ''}
-      </div>`).join('');
-  } else {
-    empList.innerHTML = '<div class="empty-state">No employees found</div>';
-  }
-
-  // Load pending timecards
-  const { data: tcs } = await db.from('timecards')
-    .select('*, employees(name)')
-    .eq('status', 'submitted')
-    .order('submitted_at', { ascending: false })
-    .limit(20);
-  const tcList = $('pending-timecards-admin');
-  if (tcs?.length) {
-    tcList.innerHTML = tcs.map(tc => `
-      <div class="employee-row">
-        <div style="flex:1">
-          <div style="font-size:14px;font-weight:600">${tc.employees?.name || '—'}</div>
-          <div style="font-size:12px;color:var(--muted)">Week of ${tc.week_ending} · ${tc.total_hours} hrs</div>
-        </div>
-        <button class="btn btn-primary" style="font-size:12px;padding:6px 10px" onclick="approveTimecard('${tc.id}')">Approve</button>
-      </div>`).join('');
-  } else {
-    tcList.innerHTML = '<div class="empty-state">No pending timecards</div>';
-  }
+// ── SETUP ──
+async function saveName(){
+  const name=$('setup-name-input').value.trim();
+  if(!name)return toast('Enter a name','error');
+  if(currentEmployee){await db.from('employees').update({name}).eq('id',currentEmployee.id);currentEmployee.name=name;}
+  $('topbar-user-name').textContent=name;
+  $('setup-name-display').textContent=name;
+  saveLocal(); toast('Name saved','success');
 }
 
-async function makeAdmin(employeeId) {
-  await db.from('employees').update({ role: 'admin' }).eq('id', employeeId);
-  loadAdminData();
-  toast('Role updated', 'success');
+// ── ADMIN ──
+async function loadAdminData(){
+  const{data:emps}=await db.from('employees').select('*').order('name');
+  $('employee-list-admin').innerHTML=emps?.length
+    ?emps.map(e=>`<div class="employee-row"><span class="employee-row-name">${e.name}</span><span class="employee-row-role">${e.role}</span>${e.role!=='admin'?`<button class="btn btn-ghost" style="font-size:12px;padding:5px 8px" onclick="makeAdmin('${e.id}')">Make Admin</button>`:''}</div>`).join('')
+    :'<div class="empty-state">No employees found</div>';
+  const{data:tcs}=await db.from('timecards').select('*,employees(name)').eq('status','submitted').order('submitted_at',{ascending:false}).limit(20);
+  $('pending-timecards-admin').innerHTML=tcs?.length
+    ?tcs.map(tc=>`<div class="employee-row"><div style="flex:1"><div style="font-size:14px;font-weight:600">${tc.employees?.name||'—'}</div><div style="font-size:12px;color:var(--muted)">Week of ${tc.week_ending} · ${tc.total_hours} hrs</div></div><button class="btn btn-primary" style="font-size:12px;padding:6px 10px" onclick="approveTimecard('${tc.id}')">Approve</button></div>`).join('')
+    :'<div class="empty-state">No pending timecards</div>';
 }
 
-async function approveTimecard(timecardId) {
-  await db.from('timecards').update({ status: 'approved' }).eq('id', timecardId);
-  loadAdminData();
-  toast('Timecard approved', 'success');
-}
+async function makeAdmin(id){await db.from('employees').update({role:'admin'}).eq('id',id);loadAdminData();toast('Role updated','success');}
+async function approveTimecard(id){await db.from('timecards').update({status:'approved'}).eq('id',id);loadAdminData();toast('Timecard approved','success');}
 
-// ── Render all ────────────────────────────────────────────
-function renderAll() {
-  renderDays();
-  renderJobs();
-  renderCodes();
-}
+function renderAll(){renderDays();renderJobs();renderCodes();}
 
-// ── Online/offline detection ──────────────────────────────
-window.addEventListener('online',  () => { loadCloudData(); });
-window.addEventListener('offline', () => setSyncState('offline'));
-
-// ── Keyboard shortcuts ────────────────────────────────────
-document.addEventListener('keydown', e => {
-  if (e.key === 'Enter' && $('login-email') === document.activeElement) doLogin();
-  if (e.key === 'Enter' && $('login-password') === document.activeElement) doLogin();
+window.addEventListener('online',()=>loadCloudData());
+window.addEventListener('offline',()=>setSyncState('offline'));
+document.addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&document.activeElement===$('login-password'))doLogin();
+  if(e.key==='Enter'&&document.activeElement===$('login-email'))doLogin();
 });
 
-// ── Init: check existing session ─────────────────────────
-(async () => {
-  const { data: { session } } = await db.auth.getSession();
-  if (session?.user) {
-    currentUser = session.user;
-    await loadEmployeeProfile();
-    showApp();
-  }
+(async()=>{
+  const{data:{session}}=await db.auth.getSession();
+  if(session?.user){currentUser=session.user;await loadEmployeeProfile();showApp();}
 })();
 </script>
 </body>

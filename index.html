@@ -144,10 +144,10 @@ body{font-family:'DM Sans',-apple-system,sans-serif;background:var(--navy);color
 <div class="topbar">
   <div style="display:flex;align-items:center;gap:10px;">
     <img src="https://raw.githubusercontent.com/RococoConstruction/time/main/icon-192.png" style="height:36px;width:auto;border-radius:8px;" onerror="this.style.display='none'"/>
-    <div class="sync-chip"><div class="sdot" id="sdot"></div><span id="slbl">Syncing…</span></div>
+    <div class="sync-chip" onclick="openAdminModal()" style="cursor:pointer;"><div class="sdot" id="sdot"></div><span id="slbl">Syncing…</span></div>
   </div>
   <div style="display:flex;align-items:center;gap:8px;">
-    <div class="admin-badge" id="admin-badge" onclick="openAdminModal()" style="display:none;">Admin</div>
+    <div class="admin-badge" id="admin-badge" onclick="lockAdmin()" style="display:none;">Admin ★</div>
     <div class="emp-pill" id="emp-pill" onclick="openEmpModal()">Tap to set name</div>
   </div>
 </div>

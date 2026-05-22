@@ -368,7 +368,7 @@ const DEFAULT_JOBS = [
   'Jorgenson','Mathewson','Beaver','Coop C Store','Fonagy','Hare',
   'Kipling Ball Washrooms','Moosomin Day Care','RM Brock','RM Maryfield',
   'White Garage','Sloan','Slykhuis Brody','Supreme','West','Wiens',
-  'Dobson','Shauna','Lequer','Carlyle Cubs','Funeral Reno'
+  'Dobson','Shauna','Lequer','Carlyle Cubs','Funeral Reno','Marketing'
 ];
 
 // ═══════════════════════════════════════
@@ -862,6 +862,18 @@ async function sendToTina(){
     $('validation-list').innerHTML=errs.map(e=>`<div style="display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--navy3);"><span style="color:var(--red);font-size:18px;flex-shrink:0;">&#215;</span><span style="font-size:14px;">${e}</span></div>`).join('');
     $('validation-modal').classList.add('open');return;
   }
+  // Check for duplicate submission — same employee, same dates, submitted within last 10 minutes
+  const lastSent = localStorage.getItem('rcs_last_sent');
+  if (lastSent) {
+    const last = JSON.parse(lastSent);
+    const sameEmp = last.emp === emp;
+    const sameDates = JSON.stringify(S.days.map(d=>d.date).sort()) === JSON.stringify(last.dates.sort());
+    const recentlySubmitted = (Date.now() - last.time) < 10 * 60 * 1000; // 10 minutes
+    if (sameEmp && sameDates && recentlySubmitted) {
+      if (!confirm('It looks like you already submitted this timecard recently. Send again?')) return;
+    }
+  }
+
   const btn=$('send-btn');btn.textContent='Sending…';btn.disabled=true;
   const month=$('sheet-month').value||'';
   const cm=codeMapFn();
@@ -878,6 +890,11 @@ async function sendToTina(){
     await fetch(SCRIPT_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'submitTimecard',emp,month,total:grandTotal(),rows:allRows,breaks})});
     toast('Sent to Tina successfully!');
   }catch(e){toast('Sent! (check the sheet)');}
+  // Save last sent info to prevent duplicates
+  localStorage.setItem('rcs_last_sent', JSON.stringify({
+    emp, dates: S.days.map(d=>d.date), time: Date.now()
+  }));
+
   btn.innerHTML='<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M2 2l14 7-14 7V11l10-2-10-2V2z" fill="currentColor"/></svg> Send to Tina';
   btn.disabled=false;
 }

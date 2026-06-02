@@ -931,7 +931,7 @@ function applySentState() {
   const btn = $('send-btn');
   if (!btn) return;
   if (localStorage.getItem('rcs_needs_clear') === '1') {
-    btn.textContent = 'Sent — Press Clear All before resending';
+    btn.textContent = 'Sent — Press Clear All before your next submission';
     btn.disabled = true;
     btn.style.background = 'var(--mid)';
   } else {

@@ -405,6 +405,14 @@ let idc=1, pendingJobCtx=null;
 const $=id=>document.getElementById(id);
 const today=()=>new Date().toISOString().split('T')[0];
 
+function getDayLabel(dateStr) {
+  if (!dateStr) return '';
+  const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const d = new Date(dateStr + 'T12:00:00');
+  if (isNaN(d.getTime())) return '';
+  return days[d.getDay()];
+}
+
 function newTask(){return{id:Date.now()+(idc++),proj:'',code:'',act:'',start:'',finish:''};}
 function newDay(date){return{id:Date.now()+(idc++),date:date||today(),tasks:[newTask()],lunch:false,lunchMins:30};}
 
@@ -590,6 +598,7 @@ function renderSheet(){
     <div class="day-date-wrap">
       <div class="day-label">Date</div>
       <input type="date" class="day-date-input" value="${day.date}" onchange="updDay(${day.id},'date',this.value)"/>
+      <div style="font-size:12px;font-weight:700;color:var(--org2);">${getDayLabel(day.date)}</div>
     </div>
     <div style="display:flex;align-items:center;gap:6px;">
       <div class="day-hrs-badge" id="dh_${day.id}">${dt>0?dt+' hrs':'0 hrs'}</div>
@@ -840,10 +849,17 @@ function validate(){
   const dates=S.days.map(d=>d.date).filter(Boolean);
   const dups=dates.filter((d,i)=>dates.indexOf(d)!==i);
   if(dups.length)errs.push('Duplicate date: '+[...new Set(dups)].join(', '));
+  const todayStr=today();
+  const sevenDaysAgo=new Date();sevenDaysAgo.setDate(sevenDaysAgo.getDate()-7);
   S.days.forEach((day,di)=>{
+    const dayLabel=getDayLabel(day.date);
+    const dayTag=`Day ${di+1} (${dayLabel} ${day.date})`;
+    if(day.date>todayStr) errs.push(`${dayTag}: Date is in the future — is that correct?`);
+    const dayDate=new Date(day.date+'T12:00:00');
+    if(dayDate<sevenDaysAgo) errs.push(`${dayTag}: Date is more than 7 days ago — please double check.`);
     day.tasks.forEach((t,ti)=>{
       const has=t.start||t.finish||t.proj||t.code||t.act;if(!has)return;
-      const lbl=`Day ${di+1} Task ${ti+1}: `;
+      const lbl=`${dayTag} Task ${ti+1}: `;
       if(!t.start)errs.push(lbl+'Missing start time.');
       if(!t.finish)errs.push(lbl+'Missing finish time.');
       if(!t.proj&&t.code!=='MKTG')errs.push(lbl+'Missing project.');
@@ -888,12 +904,13 @@ async function sendToTina(){
   if(!allRows.length){toast('No entries to send');btn.textContent='Send to Tina';btn.disabled=false;return;}
   try{
     await fetch(SCRIPT_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'submitTimecard',emp,month,total:grandTotal(),rows:allRows,breaks})});
-    toast('Sent to Tina successfully!');
+    toast('Send Success! Please press Clear All to avoid resending.');
+    // Auto-export Excel backup
+    try { exportExcel(); } catch(e) {}
   }catch(e){toast('Sent! (check the sheet)');}
-  // Lock the send button for 5 minutes to prevent duplicate submissions
-  const sentKey = 'rcs_sent_' + emp.replace(/\s+/g,'_');
-  localStorage.setItem(sentKey, Date.now().toString());
-  lockSendBtn(btn);
+  // Disable send button until Clear All is pressed
+  localStorage.setItem('rcs_needs_clear', '1');
+  applySentState();
 }
 
 // ═══════════════════════════════════════
@@ -910,39 +927,32 @@ function exportExcel(){
   XLSX.writeFile(wb,`RCS_${emp.replace(/\s+/g,'_')}_${month||'timesheet'}.xlsx`);
   toast('Excel exported');
 }
-function lockSendBtn(btn) {
-  const remaining = () => {
-    const k = 'rcs_sent_' + (S.emp||'').replace(/\s+/g,'_');
-    const t = parseInt(localStorage.getItem(k)||'0');
-    return Math.max(0, 300 - Math.floor((Date.now()-t)/1000));
-  };
-  const update = () => {
-    const secs = remaining();
-    if (secs <= 0) {
-      btn.innerHTML='<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M2 2l14 7-14 7V11l10-2-10-2V2z" fill="currentColor"/></svg> Send to Tina';
-      btn.disabled=false;
-      btn.style.background='';
-      return;
-    }
-    const m = Math.floor(secs/60), s = secs%60;
-    btn.textContent='Sent! Re-send in '+m+':'+(s<10?'0':'')+s;
-    btn.disabled=true;
-    btn.style.background='var(--mid)';
-    setTimeout(update, 1000);
-  };
-  update();
+function applySentState() {
+  const btn = $('send-btn');
+  if (!btn) return;
+  if (localStorage.getItem('rcs_needs_clear') === '1') {
+    btn.textContent = 'Sent — Press Clear All before resending';
+    btn.disabled = true;
+    btn.style.background = 'var(--mid)';
+  } else {
+    btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M2 2l14 7-14 7V11l10-2-10-2V2z" fill="currentColor"/></svg> Send to Tina';
+    btn.disabled = false;
+    btn.style.background = '';
+  }
 }
 
 function checkSendLock() {
-  const btn = $('send-btn');
-  if (!btn || !S.emp) return;
-  const k = 'rcs_sent_' + S.emp.replace(/\s+/g,'_');
-  const t = parseInt(localStorage.getItem(k)||'0');
-  const secs = Math.max(0, 300 - Math.floor((Date.now()-t)/1000));
-  if (secs > 0) lockSendBtn(btn);
+  applySentState();
 }
 
-function clearAll(){if(!confirm('Clear all days and entries?'))return;S.days=[];renderSheet();save();}
+function clearAll(){
+  if(!confirm('Clear all days and entries?'))return;
+  S.days=[];
+  localStorage.removeItem('rcs_needs_clear');
+  renderSheet();
+  save();
+  applySentState();
+}
 
 // ═══════════════════════════════════════
 // KEYBOARD / MODAL CLOSE

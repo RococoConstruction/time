@@ -582,10 +582,24 @@ function projOpts(sel){
     '<option value="__new__" style="color:var(--org2);font-weight:700;">+ Add new job…</option>';
 }
 function codeOpts(sel){
+  // Merge master codes + custom codes, sort numerically, no duplicates
   const custom=S.customCodes||[];
+  const customNums=custom.map(c=>c.num);
+  // Filter out any custom codes already in master list
+  const uniqueCustom=custom.filter(c=>!CODES.find(m=>m.n===c.num));
+  const all=[
+    ...CODES.map(c=>({num:c.n,name:c.d})),
+    ...uniqueCustom
+  ].sort((a,b)=>{
+    const an=parseInt(a.num)||99999, bn=parseInt(b.num)||99999;
+    if(an!==bn)return an-bn;
+    return a.num.localeCompare(b.num);
+  });
   let o='<option value="">Select code…</option>';
-  o+=CODES.map(c=>{const lbl=c.n==='MKTG'?c.d:`${c.n} — ${c.d}`;return`<option value="${c.n}"${c.n===sel?' selected':''}>${lbl}</option>`;}).join('');
-  if(custom.length){o+='<option disabled>── Custom codes ──</option>';o+=custom.map(c=>`<option value="${c.num}"${c.num===sel?' selected':''}>${c.num} — ${c.name}</option>`).join('');}
+  o+=all.map(c=>{
+    const lbl=c.num==='MKTG'?c.name:`${c.num} — ${c.name}`;
+    return`<option value="${c.num}"${c.num===sel?' selected':''}>${lbl}</option>`;
+  }).join('');
   return o;
 }
 

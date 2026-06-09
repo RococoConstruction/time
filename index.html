@@ -213,8 +213,8 @@ body{font-family:'DM Sans',-apple-system,sans-serif;background:var(--navy);color
 
       <!-- CUSTOM CODES BLOCK — Admin only -->
       <div class="setup-block">
-        <div class="setup-title">Custom Labour Codes</div>
-        <p style="font-size:12px;color:var(--muted);margin-bottom:10px;">Add codes beyond the master list. Admin codes sync to all devices.</p>
+        <div class="setup-title">Labour Codes</div>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:10px;">Add codes beyond the master list. They sync to all devices and sort numerically.</p>
         <div id="custom-codes-list"></div>
         <div id="admin-code-section" style="display:none;">
           <div class="custom-code-grid">
@@ -334,34 +334,72 @@ const MAX_TASKS  = 10;
 // MASTER LABOUR CODES
 // ═══════════════════════════════════════
 const CODES = [
-  {n:'1000',d:'Construction Labour Costs'},{n:'1011',d:'Site Inspection'},
-  {n:'2050',d:'Demolition'},{n:'2100',d:'Septic Tank Install'},
-  {n:'2130',d:'Project Pursuit — Office use only'},
-  {n:'2171',d:'Damp-proofing Labour'},{n:'2201',d:'Earthwork Labour'},
-  {n:'2351',d:'Piles/Caissons Labour'},{n:'2480',d:'Landscaping'},
-  {n:'2500',d:'Paving (incld. Bumpers)'},{n:'3101',d:'Formwork/Grade Beam Labour'},
-  {n:'3102',d:'Concrete Slab Prep'},{n:'3106',d:'ICF Labour'},
-  {n:'3305',d:'Exterior Concrete - Labour'},{n:'3351',d:'Concrete Pour/Fin. Labour'},
-  {n:'4001',d:'Masonry Labour'},{n:'5501',d:'Misc. Metals Labour'},
-  {n:'5601',d:'Structural Steel Labour'},{n:'6103',d:'Wood Foundation Labour'},
-  {n:'6115',d:'Framing Labour'},{n:'6201',d:'Fin. Carpentry - Labour'},
-  {n:'6216',d:'Faux Beam Install'},{n:'7201',d:'Insulation/VP Labour'},
-  {n:'7251',d:'Fireproofing Labour'},{n:'7301',d:'Roofing Labour'},
-  {n:'7401',d:'Siding Labour'},{n:'7406',d:'Soffit/Fascia Labour'},
-  {n:'8101',d:'Metal Door/Frames Install'},{n:'8301',d:'Overhead Door Install'},
-  {n:'8500',d:'Screen Room Labour'},{n:'8601',d:'Windows/Exterior Doors Install'},
-  {n:'8701',d:'Door Hardware Install'},{n:'9201',d:'Parging / Stucco Labour'},
-  {n:'9251',d:'Drywall/Boarding Labour'},{n:'9252',d:'Drywall Tape/Sand'},
-  {n:'9301',d:'Tile Install Labour'},{n:'9501',d:'Ceiling Tile Labour'},
-  {n:'9681',d:'Flooring Install Labour'},{n:'9801',d:'Alt. Wall Finishes Labour'},
-  {n:'9900',d:'Painting'},{n:'10801',d:'Washroom Acc. Labour'},
-  {n:'11401',d:'Food Service Equip. Labour'},{n:'15101',d:'Fireplace Labour'},
-  {n:'17027',d:'Hoarding Labour'},{n:'17070',d:'Final Clean Up'},
-  {n:'18300',d:'Site Supervision'},{n:'18315',d:'Travel Time'},
-  {n:'20100',d:'Accounting'},{n:'20101',d:'Project Management'},
-  {n:'20120',d:'Project Procurement'},{n:'20200',d:'Safety PPE'},
-  {n:'20201',d:'Safety Labour'},{n:'20210',d:'Training'},
-  {n:'MKTG',d:'Marketing — Office use only'},
+  {n:'1000', d:'Construction Labour Costs'},
+  {n:'1011', d:'Site Inspection'},
+  {n:'2050', d:'Demolition'},
+  {n:'2100', d:'Septic Tank Install'},
+  {n:'2130', d:'Project Pursuit — Office use only'},
+  {n:'2171', d:'Damp-proofing Labour'},
+  {n:'2201', d:'Earthwork Labour'},
+  {n:'2351', d:'Piles/Caissons Labour'},
+  {n:'2480', d:'Landscaping'},
+  {n:'2500', d:'Paving (incld. Bumpers)'},
+  {n:'3101', d:'Formwork/Grade Beam Labour'},
+  {n:'3102', d:'Concrete Slab Prep'},
+  {n:'3106', d:'ICF Labour'},
+  {n:'3201', d:'Concrete Reinforcement Labour'},
+  {n:'3305', d:'Exterior Concrete - Labour'},
+  {n:'3351', d:'Concrete Pour/Fin. Labour'},
+  {n:'4100', d:'Masonry Labour'},
+  {n:'5501', d:'Misc. Metals Labour'},
+  {n:'5601', d:'Structural Steel Labour'},
+  {n:'6103', d:'Wood Foundation Labour'},
+  {n:'6110', d:'Misc. Materials'},
+  {n:'6115', d:'Framing Labour'},
+  {n:'6181', d:'Prefab Floor Joists/Trusses Install'},
+  {n:'6201', d:'Fin. Carpentry - Labour'},
+  {n:'6216', d:'Faux Beam Install'},
+  {n:'7201', d:'Insulation/VP Labour'},
+  {n:'7251', d:'Fireproofing Labour'},
+  {n:'7301', d:'Roofing Labour'},
+  {n:'7401', d:'Siding Labour'},
+  {n:'7406', d:'Soffit/Fascia Labour'},
+  {n:'8101', d:'Metal Door/Frames Install'},
+  {n:'8301', d:'Overhead Door Install'},
+  {n:'8341', d:'Specialty Door/Shutter Labour'},
+  {n:'8500', d:'Screen Room Labour'},
+  {n:'8601', d:'Windows/Exterior Doors Install'},
+  {n:'8701', d:'Door Hardware Install'},
+  {n:'9201', d:'Parging / Stucco Labour'},
+  {n:'9251', d:'Drywall/Boarding Labour'},
+  {n:'9252', d:'Drywall Tape/Sand'},
+  {n:'9301', d:'Tile Install Labour'},
+  {n:'9302', d:'Tile Waterproofing Labour'},
+  {n:'9501', d:'Ceiling Tile Labour'},
+  {n:'9681', d:'Flooring Install Labour'},
+  {n:'9801', d:'Alt. Wall Finishes Labour'},
+  {n:'9900', d:'Painting'},
+  {n:'9999', d:'Code Not Yet Listed'},
+  {n:'10801',d:'Washroom Acc. Labour'},
+  {n:'11401',d:'Food Service Equip. Labour'},
+  {n:'15101',d:'Fireplace Labour'},
+  {n:'17027',d:'Hoarding Labour'},
+  {n:'17070',d:'Final Clean Up'},
+  {n:'17510',d:'Snow Removal'},
+  {n:'18300',d:'Site Supervision'},
+  {n:'18315',d:'Travel Time'},
+  {n:'20100',d:'Accounting'},
+  {n:'20101',d:'Project Management'},
+  {n:'20120',d:'Project Procurement'},
+  {n:'20200',d:'Safety PPE'},
+  {n:'20201',d:'Safety Labour'},
+  {n:'20210',d:'Training'},
+  {n:'20211',d:'Team Building'},
+  {n:'50000',d:'R&M Tool'},
+  {n:'50001',d:'R&M Vehicle'},
+  {n:'50002',d:'R&M Equipment'},
+  {n:'50003',d:'R&M Building/Property'},
+  {n:'MKTG', d:'Marketing — Office use only'},
 ];
 
 const DEFAULT_JOBS = [
@@ -791,6 +829,12 @@ function addCustomCode(){
   if(!S.customCodes)S.customCodes=[];
   if(S.customCodes.find(c=>c.num===num)||CODES.find(c=>c.n===num)){toast('Code '+num+' already exists');return;}
   S.customCodes.push({num,name});
+  // Sort custom codes numerically
+  S.customCodes.sort(function(a,b){
+    const an=parseInt(a.num)||0, bn=parseInt(b.num)||0;
+    if(an&&bn)return an-bn;
+    return a.num.localeCompare(b.num);
+  });
   $('new-code-num').value='';$('new-code-name').value='';
   save();renderSetup();buildCodes();renderSheet();
   pushDataToSheet();

@@ -133,6 +133,11 @@ body{font-family:'DM Sans',-apple-system,sans-serif;background:var(--navy);color
 .pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:8px;}
 .pin-btn{padding:16px;background:var(--navy3);border:1px solid var(--steel);border-radius:var(--r);font-size:22px;font-weight:700;color:var(--white);cursor:pointer;font-family:'DM Mono',monospace;text-align:center;}
 .pin-btn:active{background:var(--steel);}
+/* PROJ SEARCH */
+.proj-item{padding:10px 14px;cursor:pointer;font-size:14px;color:var(--white);}
+.proj-item:hover,.proj-item:active{background:var(--navy3);}
+.proj-item.section{color:var(--org2);font-weight:700;font-size:12px;padding:8px 14px 4px;cursor:default;border-top:1px solid var(--steel);}
+.proj-item.action{color:var(--org2);font-weight:700;}
 /* TOAST */
 .toast{position:fixed;bottom:calc(64px + env(safe-area-inset-bottom) + 12px);left:50%;transform:translateX(-50%) translateY(8px);background:var(--navy2);border:1px solid var(--steel);color:var(--white);padding:10px 20px;border-radius:20px;font-size:13px;font-weight:600;opacity:0;pointer-events:none;z-index:999;transition:opacity .2s,transform .2s;white-space:nowrap;box-shadow:0 4px 20px rgba(0,0,0,.5);}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
@@ -265,7 +270,7 @@ body{font-family:'DM Sans',-apple-system,sans-serif;background:var(--navy);color
 <div class="modal-overlay" id="new-job-modal">
   <div class="modal-sheet">
     <div class="modal-handle"></div>
-    <div class="modal-title">Add new job</div>
+    <div class="modal-title" id="new-job-modal-title">Add new job</div>
     <input type="text" class="modal-input" id="new-job-input" placeholder="e.g. Smith Residence"/>
     <button class="modal-btn primary" onclick="saveNewJob()">Add job &amp; select</button>
     <button class="modal-btn ghost" onclick="closeNewJobModal()">Cancel</button>
@@ -443,6 +448,86 @@ let idc=1, pendingJobCtx=null;
 const $=id=>document.getElementById(id);
 const today=()=>new Date().toISOString().split('T')[0];
 
+function buildProjList(dayId, taskId, sel, filter='') {
+  const f = filter.toLowerCase();
+  const allJobs = S.projects.filter(p => !f || p.toLowerCase().includes(f));
+  const maintJobs = (S.maintenanceJobs||[]).filter(p => !f || p.toLowerCase().includes(f));
+  let html = '';
+  if (allJobs.length) {
+    allJobs.forEach(p => {
+      html += `<div class="proj-item${p===sel?' selected':''}" onmousedown="pickProj(${dayId},${taskId},'${p.replace(/'/g,"\'")}');">${p}</div>`;
+    });
+  }
+  if (maintJobs.length) {
+    html += `<div class="proj-item section">── Maintenance ──</div>`;
+    maintJobs.forEach(p => {
+      html += `<div class="proj-item${p===sel?' selected':''}" onmousedown="pickProj(${dayId},${taskId},'${p.replace(/'/g,"\'")}');">${p}</div>`;
+    });
+  }
+  html += `<div class="proj-item action" onmousedown="pickProj(${dayId},${taskId},'__new__');">+ Add new job…</div>`;
+  html += `<div class="proj-item action" onmousedown="pickProj(${dayId},${taskId},'__newmaint__');">+ Add maintenance job…</div>`;
+  return html;
+}
+
+function filterProj(dayId, taskId, val) {
+  const pl = $('pl_'+dayId+'_'+taskId);
+  if (pl) {
+    pl.innerHTML = buildProjList(dayId, taskId, val, val);
+    pl.style.display = 'block';
+  }
+  updTask(dayId, taskId, 'proj', val);
+}
+
+function showProjList(dayId, taskId) {
+  const pl = $('pl_'+dayId+'_'+taskId);
+  const inp = $('pi_'+dayId+'_'+taskId);
+  if (pl) {
+    pl.innerHTML = buildProjList(dayId, taskId, inp?inp.value:'', '');
+    pl.style.display = 'block';
+  }
+}
+
+function hideProjList(dayId, taskId) {
+  setTimeout(() => {
+    const pl = $('pl_'+dayId+'_'+taskId);
+    if (pl) pl.style.display = 'none';
+  }, 200);
+}
+
+function pickProj(dayId, taskId, val) {
+  if (val === '__new__') {
+    pendingJobCtx = {dayId, taskId, type:'job'};
+    $('new-job-input').value = '';
+    $('new-job-modal').classList.add('open');
+    setTimeout(() => $('new-job-input').focus(), 100);
+    return;
+  }
+  if (val === '__newmaint__') {
+    pendingJobCtx = {dayId, taskId, type:'maint'};
+    $('new-job-input').value = '';
+    $('new-job-modal').classList.add('open');
+    $('new-job-modal-title').textContent = 'Add maintenance job';
+    setTimeout(() => $('new-job-input').focus(), 100);
+    return;
+  }
+  updTask(dayId, taskId, 'proj', val);
+  const inp = $('pi_'+dayId+'_'+taskId);
+  if (inp) inp.value = val;
+  const pl = $('pl_'+dayId+'_'+taskId);
+  if (pl) pl.style.display = 'none';
+  // Auto-fill next task project
+  const d = S.days.find(d => d.id === dayId);
+  if (d && val) {
+    const idx = d.tasks.findIndex(t => t.id === taskId);
+    if (idx >= 0 && idx < d.tasks.length - 1 && !d.tasks[idx+1].proj) {
+      d.tasks[idx+1].proj = val;
+      const nextInp = $('pi_'+dayId+'_'+d.tasks[idx+1].id);
+      if (nextInp) nextInp.value = val;
+      save();
+    }
+  }
+}
+
 function getDayLabel(dateStr) {
   if (!dateStr) return '';
   const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
@@ -493,7 +578,11 @@ async function syncData(force=false){
     const data=await res.json();
     let changed=false;
     if(data.jobs&&data.jobs.length>0){
-      S.projects=data.jobs;
+      S.projects=data.jobs.slice().sort((a,b)=>a.localeCompare(b));
+      changed=true;
+    }
+    if(data.maintenanceJobs&&data.maintenanceJobs.length>0){
+      S.maintenanceJobs=data.maintenanceJobs.slice().sort((a,b)=>a.localeCompare(b));
       changed=true;
     }
     if(data.customCodes&&data.customCodes.length>0){
@@ -579,7 +668,10 @@ function codeMapFn(){const m={};allCodes().forEach(c=>m[c.n]=c.d);return m;}
 function projOpts(sel){
   return '<option value="">Select project…</option>'+
     S.projects.map(p=>`<option value="${p}"${p===sel?' selected':''}>${p}</option>`).join('')+
-    '<option value="__new__" style="color:var(--org2);font-weight:700;">+ Add new job…</option>';
+    '<option value="__maintenance__" style="color:var(--org2);font-weight:700;">── Maintenance ──</option>'+
+    (S.maintenanceJobs||[]).map(p=>`<option value="${p}"${p===sel?' selected':''}>${p}</option>`).join('')+
+    '<option value="__new__" style="color:var(--org2);font-weight:700;">+ Add new job…</option>'+
+    '<option value="__newmaint__" style="color:var(--org2);font-weight:700;">+ Add maintenance job…</option>';
 }
 function codeOpts(sel){
   // Merge master codes + custom codes, sort numerically, no duplicates
@@ -633,7 +725,18 @@ function renderSheet(){
   </div>
   <div class="entry-full"${showProj?'':' style="display:none;"'} id="pf_${day.id}_${t.id}">
     <div class="elabel">Project</div>
-    <select class="einput sel" onchange="onProj(${day.id},${t.id},this)">${projOpts(t.proj)}</select>
+    <div style="position:relative;">
+      <input type="text" class="einput" id="pi_${day.id}_${t.id}"
+        value="${t.proj.replace(/"/g,'&quot;')}"
+        placeholder="Type to search…"
+        autocomplete="off"
+        oninput="filterProj(${day.id},${t.id},this.value)"
+        onfocus="showProjList(${day.id},${t.id})"
+        onblur="hideProjList(${day.id},${t.id})"/>
+      <div class="proj-list" id="pl_${day.id}_${t.id}" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--navy2);border:1px solid var(--orange);border-radius:var(--r);z-index:100;max-height:220px;overflow-y:auto;box-shadow:0 4px 20px rgba(0,0,0,.5);">
+        ${buildProjList(day.id,t.id,t.proj)}
+      </div>
+    </div>
   </div>
   <div class="entry-full">
     <div class="elabel">Labour code</div>
@@ -770,21 +873,34 @@ function onProj(dayId,taskId,sel){
 // ═══════════════════════════════════════
 function saveNewJob(){
   const v=$('new-job-input').value.trim();
-  if(!v){toast('Enter a job name');return;}
-  if(!S.projects.includes(v)){
-    S.projects.push(v);save();renderSetup();
-    // Push to sheet if admin
-    if(isAdmin)pushDataToSheet();
+  if(!v){toast('Enter a name');return;}
+  const isMaint=pendingJobCtx&&pendingJobCtx.type==='maint';
+  if(isMaint){
+    if(!S.maintenanceJobs)S.maintenanceJobs=[];
+    if(!S.maintenanceJobs.includes(v)){
+      S.maintenanceJobs.push(v);
+      S.maintenanceJobs.sort();
+      save();renderSetup();
+      if(isAdmin)pushDataToSheet(); // sync maintenance jobs to sheet too
+    }
+  } else {
+    if(!S.projects.includes(v)){
+      S.projects.push(v);S.projects.sort((a,b)=>a.localeCompare(b));
+      save();renderSetup();
+      if(isAdmin)pushDataToSheet();
+    }
   }
   if(pendingJobCtx){
     const{dayId,taskId}=pendingJobCtx;
     updTask(dayId,taskId,'proj',v);
+    const inp=$('pi_'+dayId+'_'+taskId);if(inp)inp.value=v;
     const d=S.days.find(d=>d.id===dayId);
-    if(d){const idx=d.tasks.findIndex(t=>t.id===taskId);if(idx>=0&&idx<d.tasks.length-1&&!d.tasks[idx+1].proj){d.tasks[idx+1].proj=v;}}
+    if(d){const idx=d.tasks.findIndex(t=>t.id===taskId);if(idx>=0&&idx<d.tasks.length-1&&!d.tasks[idx+1].proj){d.tasks[idx+1].proj=v;const ni=$('pi_'+dayId+'_'+d.tasks[idx+1].id);if(ni)ni.value=v;}}
     save();pendingJobCtx=null;
   }
+  const mt=$('new-job-modal-title');if(mt)mt.textContent='Add new job';
   closeNewJobModal();renderSheet();
-  toast(`Job "${v}" added!`);
+  toast(isMaint?`Maintenance "${v}" added!`:`Job "${v}" added!`);
 }
 function closeNewJobModal(){$('new-job-modal').classList.remove('open');pendingJobCtx=null;}
 function closeValidationModal(){$('validation-modal').classList.remove('open');}
@@ -825,7 +941,8 @@ function renderSetup(){
 function addProject(){
   const v=$('new-proj').value.trim();
   if(!v||S.projects.includes(v)){toast('Enter a unique name');return;}
-  S.projects.push(v);$('new-proj').value='';
+  S.projects.push(v);S.projects.sort((a,b)=>a.localeCompare(b));
+  $('new-proj').value='';
   save();renderSetup();renderSheet();
   pushDataToSheet();
   toast('Job added — syncing to all devices');
@@ -870,6 +987,7 @@ async function pushDataToSheet(){
       body:JSON.stringify({
         action:'updateJobsAndCodes',
         jobs:S.projects,
+        maintenanceJobs:S.maintenanceJobs||[],
         customCodes:S.customCodes
       })
     });

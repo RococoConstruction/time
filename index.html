@@ -1023,6 +1023,7 @@ function showView(v){
 // ═══════════════════════════════════════
 function validate(){
   const errs=[];
+  const warns=[];
   const dates=S.days.map(d=>d.date).filter(Boolean);
   const dups=dates.filter((d,i)=>dates.indexOf(d)!==i);
   if(dups.length)errs.push('Duplicate date: '+[...new Set(dups)].join(', '));
@@ -1033,7 +1034,10 @@ function validate(){
     const dayTag=`Day ${di+1} (${dayLabel} ${day.date})`;
     if(day.date>todayStr) errs.push(`${dayTag}: Date is in the future — is that correct?`);
     const dayDate=new Date(day.date+'T12:00:00');
-    if(dayDate<sevenDaysAgo) errs.push(`${dayTag}: Date is more than 7 days ago — please double check.`);
+    if(dayDate<sevenDaysAgo){
+      const daysOld=Math.floor((new Date()-dayDate)/(1000*60*60*24));
+      warns.push(`${dayTag}: This date is ${daysOld} days ago — are you sure you are inputting the dates correctly?`);
+    }
     day.tasks.forEach((t,ti)=>{
       const has=t.start||t.finish||t.proj||t.code||t.act;if(!has)return;
       const lbl=`${dayTag} Task ${ti+1}: `;
@@ -1044,16 +1048,20 @@ function validate(){
       if(t.start&&t.finish&&calcH(t.start,t.finish)<=0)errs.push(lbl+'Finish must be after start.');
     });
   });
-  return errs;
+  return {errs, warns};
 }
 
 async function sendToTina(){
   const emp=S.emp||'';
   if(!emp){toast('Please set your name first!');openEmpModal();return;}
-  const errs=validate();
-  if(errs.length){
+  const {errs, warns} = validate();
+  if (errs.length) {
     $('validation-list').innerHTML=errs.map(e=>`<div style="display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--navy3);"><span style="color:var(--red);font-size:18px;flex-shrink:0;">&#215;</span><span style="font-size:14px;">${e}</span></div>`).join('');
     $('validation-modal').classList.add('open');return;
+  }
+  if (warns.length) {
+    const msg = warns.join('\n\n');
+    if (!confirm(msg + '\n\nPress OK to send anyway, or Cancel to go back and fix.')) return;
   }
   // Check for duplicate submission — same employee, same dates, submitted within last 10 minutes
   const lastSent = localStorage.getItem('rcs_last_sent');

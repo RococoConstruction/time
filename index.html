@@ -1008,7 +1008,9 @@ function openEmpModal(){$('modal-emp').value=S.emp;$('emp-modal').classList.add(
 function closeEmpModal(){$('emp-modal').classList.remove('open');}
 function saveEmp(){
   const v=$('modal-emp').value.trim();if(!v)return;
-  S.emp=v;$('emp-pill').textContent=v;save();closeEmpModal();toast('Name saved');
+  S.emp=v;$('emp-pill').textContent=v;save();
+  sessionStorage.setItem('rcs_name_confirmed', v);
+  closeEmpModal();toast('Name saved');
 }
 
 // ═══════════════════════════════════════
@@ -1167,7 +1169,18 @@ function init(){
   const dm=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
   $('sheet-month').value=S.month||dm;
   $('sheet-month').addEventListener('change',e=>{S.month=e.target.value;save();});
-  $('emp-pill').textContent=S.emp||'Tap to set name';
+  // Require name confirmation once per browser session — don't silently
+  // show a previously saved name as if it's already confirmed.
+  const sessionConfirmed = sessionStorage.getItem('rcs_name_confirmed');
+  if (S.emp && sessionConfirmed === S.emp) {
+    $('emp-pill').textContent = S.emp;
+  } else {
+    $('emp-pill').textContent = 'Tap to set name';
+    if (S.emp) {
+      // Prompt them to confirm/edit the previously saved name
+      setTimeout(() => openEmpModal(), 300);
+    }
+  }
   if(!S.days.length)S.days.push(newDay());
   renderSheet();buildCodes();renderSetup();
   checkSendLock();

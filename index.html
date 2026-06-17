@@ -162,7 +162,7 @@ body{font-family:'DM Sans',-apple-system,sans-serif;background:var(--navy);color
   <div id="view-sheet" class="view active">
     <div class="sheet-topbar">
       <input type="month" id="sheet-month" class="month-select"/>
-      <div class="total-chip"><span class="n" id="grand-total">0</span><span class="u">hrs total</span></div>
+      <div class="total-chip"><span class="n" id="grand-total">0</span><span class="u">hrs total (after lunch)</span></div>
     </div>
     <div id="days-list"></div>
     <button class="add-day-btn" onclick="addDay()">
@@ -659,7 +659,9 @@ function calcH(s,f){
 }
 function taskHours(t){return calcH(t.start,t.finish);}
 function dayTotal(day){return Math.round(day.tasks.reduce((s,t)=>s+taskHours(t),0)*100)/100;}
+function netDayTotal(day){const gross=dayTotal(day);const lunch=day.lunch?(day.lunchMins||30)/60:0;return Math.round((gross-lunch)*100)/100;}
 function grandTotal(){return Math.round(S.days.reduce((s,d)=>s+dayTotal(d),0)*100)/100;}
+function netGrandTotal(){return Math.round(S.days.reduce((s,d)=>s+netDayTotal(d),0)*100)/100;}
 
 // ═══════════════════════════════════════
 // CODE HELPERS
@@ -707,6 +709,7 @@ function renderSheet(){
   }
   list.innerHTML=S.days.map((day,di)=>{
     const dt=dayTotal(day);
+    const nt=netDayTotal(day);
     const tasksHTML=day.tasks.map((t,ti)=>{
       const rh=taskHours(t);
       const minStart=ti===0?'':(day.tasks[ti-1].finish||'');
@@ -757,14 +760,14 @@ function renderSheet(){
       <div style="font-size:12px;font-weight:700;color:var(--org2);">${getDayLabel(day.date)}</div>
     </div>
     <div style="display:flex;align-items:center;gap:6px;">
-      <div class="day-hrs-badge" id="dh_${day.id}">${dt>0?dt+' hrs':'0 hrs'}</div>
+      <div class="day-hrs-badge" id="dh_${day.id}">${nt>0?nt+' hrs':'0 hrs'}${day.lunch?' <span style="color:var(--muted);font-weight:400;">(−'+((day.lunchMins||30)/60)+')</span>':''}</div>
       <button class="del-day-btn" onclick="delDay(${day.id})">&#215;</button>
     </div>
   </div>
   ${tasksHTML}
-  <div style="padding:10px 14px;border-top:1px solid var(--navy3);display:flex;align-items:center;gap:10px;">
-    <input type="checkbox" id="dlc_${day.id}" ${day.lunch?'checked':''} onchange="onDayLunch(${day.id},this.checked)" style="width:18px;height:18px;accent-color:var(--orange);cursor:pointer;flex-shrink:0;"/>
-    <label for="dlc_${day.id}" style="font-size:13px;color:var(--muted);cursor:pointer;">Lunch break</label>
+  <div style="padding:12px 14px;border-top:2px solid var(--orange);background:rgba(232,114,42,.08);display:flex;align-items:center;gap:10px;">
+    <input type="checkbox" id="dlc_${day.id}" ${day.lunch?'checked':''} onchange="onDayLunch(${day.id},this.checked)" style="width:22px;height:22px;accent-color:var(--orange);cursor:pointer;flex-shrink:0;"/>
+    <label for="dlc_${day.id}" style="font-size:14px;font-weight:700;color:var(--white);cursor:pointer;">🍽️ Lunch break taken?</label>
     <select class="lunch-sel" id="dlm_${day.id}" onchange="onDayLunchMins(${day.id},parseInt(this.value))" ${!day.lunch?'disabled':''}>
       <option value="30" ${(!day.lunchMins||day.lunchMins===30)?'selected':''}>30 min</option>
       <option value="45" ${day.lunchMins===45?'selected':''}>45 min</option>
@@ -779,7 +782,7 @@ function renderSheet(){
   </div>
 </div>`;
   }).join('');
-  $('grand-total').textContent=grandTotal();
+  $('grand-total').textContent=netGrandTotal();
 }
 
 // ═══════════════════════════════════════
@@ -830,18 +833,21 @@ function onTime(dayId,taskId,field,val){
   const rh=taskHours(t);
   const badge=$('th_'+taskId);if(badge)badge.textContent=rh>0?rh+' hrs':'';
   const dt=dayTotal(d);
-  const dhEl=$('dh_'+dayId);if(dhEl)dhEl.textContent=dt>0?dt+' hrs':'0 hrs';
-  $('grand-total').textContent=grandTotal();
+  const nt=netDayTotal(d);
+  const dhEl=$('dh_'+dayId);
+  if(dhEl)dhEl.innerHTML=(nt>0?nt+' hrs':'0 hrs')+(d.lunch?' <span style="color:var(--muted);font-weight:400;">(−'+((d.lunchMins||30)/60)+')</span>':'');
+  $('grand-total').textContent=netGrandTotal();
   save();
 }
 function onDayLunch(dayId,checked){
   const d=S.days.find(d=>d.id===dayId);if(!d)return;
   d.lunch=checked;save();
-  const sel=$('dlm_'+dayId);if(sel)sel.disabled=!checked;
+  renderSheet();
 }
 function onDayLunchMins(dayId,mins){
   const d=S.days.find(d=>d.id===dayId);if(!d)return;
   d.lunchMins=mins;save();
+  renderSheet();
 }
 function onCode(dayId,taskId,val){
   updTask(dayId,taskId,'code',val);
@@ -1037,6 +1043,10 @@ function validate(){
     if(dayDate<sevenDaysAgo){
       const daysOld=Math.floor((new Date()-dayDate)/(1000*60*60*24));
       warns.push(`${dayTag}: This date is ${daysOld} days ago — are you sure you are inputting the dates correctly?`);
+    }
+    const grossDay=dayTotal(day);
+    if(grossDay>=5&&!day.lunch){
+      warns.push(`${dayTag}: ${grossDay} hrs logged with no lunch break checked — did you take a lunch?`);
     }
     day.tasks.forEach((t,ti)=>{
       const has=t.start||t.finish||t.proj||t.code||t.act;if(!has)return;

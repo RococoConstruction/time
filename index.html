@@ -333,7 +333,7 @@ body{font-family:'DM Sans',-apple-system,sans-serif;background:var(--navy);color
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyYcfCo3qBealcV8iyKUr7ugGL6AdUJK-z2xgqywHw_hzf-gDOTxGLPpWtcTvT757qn/exec';
 const ADMIN_PIN  = '1331';
 const SK         = 'rcs_v6';
-const MAX_TASKS  = 10;
+const MAX_TASKS  = 25;
 
 // ═══════════════════════════════════════
 // MASTER LABOUR CODES
@@ -527,6 +527,70 @@ function pickProj(dayId, taskId, val) {
       save();
     }
   }
+}
+
+function buildCodeList(dayId, taskId, sel, filter='') {
+  const f = filter.toLowerCase();
+  const codes = (() => {
+    const custom = S.customCodes||[];
+    const uniqueCustom = custom.filter(c=>!CODES.find(m=>m.n===c.num));
+    return [
+      ...CODES.map(c=>({num:c.n,name:c.d})),
+      ...uniqueCustom
+    ].sort((a,b)=>{
+      const an=parseInt(a.num)||99999, bn=parseInt(b.num)||99999;
+      if(an!==bn)return an-bn;
+      return a.num.localeCompare(b.num);
+    });
+  })();
+  const filtered = !f ? codes : codes.filter(c =>
+    c.num.toLowerCase().includes(f) || c.name.toLowerCase().includes(f)
+  );
+  if (!filtered.length) return '<div class="proj-item" style="color:var(--muted);">No results</div>';
+  return filtered.map(c => {
+    const lbl = c.num==='MKTG' ? c.name : `${c.num} — ${c.name}`;
+    return `<div class="proj-item${c.num===sel?' selected':''}" onmousedown="pickCode(${dayId},${taskId},'${c.num}','${c.name.replace(/'/g,"\'")}')">${lbl}</div>`;
+  }).join('');
+}
+
+function showCodeList(dayId, taskId) {
+  const cl = $('cl_'+dayId+'_'+taskId);
+  const inp = $('ci_'+dayId+'_'+taskId);
+  if (cl) {
+    // Show full list or filter by current input
+    const val = inp ? inp.value : '';
+    const t = S.days.find(d=>d.id===dayId)?.tasks.find(t=>t.id===taskId);
+    cl.innerHTML = buildCodeList(dayId, taskId, t?.code||'', val.includes(' — ') ? '' : val);
+    cl.style.display = 'block';
+  }
+}
+
+function hideCodeList(dayId, taskId) {
+  setTimeout(() => {
+    const cl = $('cl_'+dayId+'_'+taskId);
+    if (cl) cl.style.display = 'none';
+  }, 200);
+}
+
+function filterCode(dayId, taskId, val) {
+  const cl = $('cl_'+dayId+'_'+taskId);
+  if (cl) {
+    const t = S.days.find(d=>d.id===dayId)?.tasks.find(t=>t.id===taskId);
+    cl.innerHTML = buildCodeList(dayId, taskId, t?.code||'', val);
+    cl.style.display = 'block';
+  }
+}
+
+function pickCode(dayId, taskId, num, name) {
+  updTask(dayId, taskId, 'code', num);
+  const inp = $('ci_'+dayId+'_'+taskId);
+  if (inp) inp.value = num==='MKTG' ? name : `${num} — ${name}`;
+  const cl = $('cl_'+dayId+'_'+taskId);
+  if (cl) cl.style.display = 'none';
+  // Handle MKTG hiding project field
+  const pf = $('pf_'+dayId+'_'+taskId);
+  if (pf) pf.style.display = num==='MKTG' ? 'none' : '';
+  if (num==='MKTG') updTask(dayId, taskId, 'proj', '');
 }
 
 function getDayLabel(dateStr) {
@@ -744,7 +808,18 @@ function renderSheet(){
   </div>
   <div class="entry-full">
     <div class="elabel">Labour code</div>
-    <select class="einput sel" onchange="onCode(${day.id},${t.id},this.value)">${codeOpts(t.code)}</select>
+    <div style="position:relative;">
+      <input type="text" class="einput" id="ci_${day.id}_${t.id}"
+        value="${t.code?allCodes().find(c=>c.n===t.code)?t.code+' — '+allCodes().find(c=>c.n===t.code).d:t.code:''}"
+        placeholder="Search code…"
+        autocomplete="off"
+        oninput="filterCode(${day.id},${t.id},this.value)"
+        onfocus="showCodeList(${day.id},${t.id})"
+        onblur="hideCodeList(${day.id},${t.id})"/>
+      <div class="proj-list" id="cl_${day.id}_${t.id}" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--navy2);border:1px solid var(--orange);border-radius:var(--r);z-index:100;max-height:260px;overflow-y:auto;box-shadow:0 4px 20px rgba(0,0,0,.5);">
+        ${buildCodeList(day.id,t.id,t.code)}
+      </div>
+    </div>
   </div>
   <div class="entry-full">
     <div class="elabel">Activity description</div>
@@ -794,7 +869,7 @@ function updDay(dayId,field,val){const d=S.days.find(d=>d.id===dayId);if(d){d[fi
 
 function addTask(dayId){
   const d=S.days.find(d=>d.id===dayId);if(!d)return;
-  if(d.tasks.length>=MAX_TASKS){toast('Max 10 tasks per day');return;}
+  if(d.tasks.length>=MAX_TASKS){toast('Max 25 tasks per day');return;}
   const last=d.tasks[d.tasks.length-1];
   const t=newTask();
   if(last&&last.finish)t.start=last.finish;
